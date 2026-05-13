@@ -9,3 +9,5 @@ vitest.config.*.timestamp*
 
 node_modules
 dist
+
+generated

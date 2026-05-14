@@ -19,6 +19,9 @@
     "paths": {
       "prisma-client": [
         "prisma/generated"
+      ],
+      "workspaceRoot/*": [
+        "*"
       ]
     },
     "ignoreDeprecations": "5.0",

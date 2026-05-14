@@ -1,17 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import client from '../api/client';
-import type { UserInfo } from '../stores/auth';
+import { connection } from '../api/client';
 import { useSetAtom } from 'jotai';
 import { tokenAtom, userAtom } from '../stores/auth';
+import apiSdk from 'workspaceRoot/apps/backend/src/api';
 
 interface LoginRequest {
   email: string;
   password: string;
-}
-
-interface LoginResponse {
-  accessToken: string;
-  user: UserInfo;
 }
 
 export function useLogin() {
@@ -19,8 +14,12 @@ export function useLogin() {
   const setUser = useSetAtom(userAtom);
 
   return useMutation({
-    mutationFn: (data: LoginRequest) =>
-      client.post<LoginResponse>('/auth/login', data).then((r) => r.data),
+    mutationFn: (data: LoginRequest) => {
+      return apiSdk.functional.auth.login(
+        connection,
+        data,
+      )
+    },
     onSuccess: (res) => {
       setToken(res.accessToken);
       setUser(res.user);
@@ -43,11 +42,18 @@ export interface DocumentResponse {
 
 export function useFiles(tenantId: string | undefined) {
   return useQuery({
-    queryKey: ['files', tenantId],
-    queryFn: () =>
-      client
-        .get<DocumentResponse[]>(`/tenants/${tenantId}/files`)
-        .then((r) => r.data),
+    queryKey: ['files', tenantId] as const,
+    queryFn: async (ctx) => {
+      const [, tenantIdFromQuery] = ctx.queryKey;
+      if (!tenantIdFromQuery) {
+        throw new Error('Tenant ID is required');
+      }
+      
+      return apiSdk.functional.tenants.files.list(
+        connection,
+        tenantIdFromQuery,
+      )
+    },
     enabled: !!tenantId,
   });
 }
@@ -57,11 +63,15 @@ export function useUploadFile(tenantId: string | undefined) {
 
   return useMutation({
     mutationFn: (file: File) => {
-      const form = new FormData();
-      form.append('file', file);
-      return client
-        .post<DocumentResponse>(`/tenants/${tenantId}/files`, form)
-        .then((r) => r.data);
+      if (!tenantId) {
+        throw new Error('Tenant ID is required');
+      }
+
+      return apiSdk.functional.tenants.files.upload(
+        connection,
+        tenantId,
+        { file },
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['files', tenantId] });
@@ -72,36 +82,27 @@ export function useUploadFile(tenantId: string | undefined) {
 export function useChat(fileId: string) {
   return useMutation({
     mutationFn: (question: string) =>
-      client
-        .post<{
-          answer: string;
-          sources: any[];
-          sessionId: string;
-        }>(`/files/${fileId}/chat`, { question })
-        .then((r) => r.data),
+      apiSdk.functional.files.chat(
+        connection,
+        fileId,
+        { question },
+      )
   });
-}
-
-export interface UserUsage {
-  userId: string;
-  email: string;
-  ncUserId: string;
-  role: string;
-  usedBytes: number;
-  quotaBytes: number;
-  usagePercent: number;
 }
 
 export function useUsersUsage(tenantId: string | undefined) {
   return useQuery({
     queryKey: ['users-usage', tenantId],
-    queryFn: () =>
-      client
-        .get<{
-          tenantId: string;
-          users: UserUsage[];
-        }>(`/admin/tenants/${tenantId}/users-usage`)
-        .then((r) => r.data),
+    queryFn: () => {
+      if (!tenantId) {
+        throw new Error('Tenant ID is required');
+      }
+      
+      apiSdk.functional.admin.tenants.users_usage.getUsersUsage(
+        connection,
+        tenantId,
+      )
+    },
     enabled: !!tenantId,
   });
 }

@@ -28,8 +28,8 @@ export default [
           ],
         },
       ],
+      '@typescript-eslint/no-namespace': 'off'
     },
-    '@typescript-eslint/no-namespace': 'off'
   },
   {
     files: [

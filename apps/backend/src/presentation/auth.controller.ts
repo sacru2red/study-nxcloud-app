@@ -9,7 +9,9 @@ export class AuthController {
   constructor(private readonly jwtService: JwtService) {}
 
   @TypedRoute.Post('login')
-  async login(@TypedBody() body: AuthDto.LoginRequest) {
+  async login(
+    @TypedBody() body: AuthDto.LoginRequest,
+  ): Promise<AuthDto.LoginResponse> {
     const { user } = await AuthProvider.login(body.email, body.password);
 
     const payload: IJwtPayload = {
@@ -29,6 +31,6 @@ export class AuthController {
         tenantId: user.tenantId,
         role: user.role as 'admin' | 'user',
       },
-    } satisfies AuthDto.LoginResponse;
+    };
   }
 }

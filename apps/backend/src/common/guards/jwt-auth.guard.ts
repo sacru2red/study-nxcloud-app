@@ -8,12 +8,16 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IJwtPayload } from '../types';
 
+export interface AuthenticatedRequest extends Request {
+  user: IJwtPayload;
+}
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request: Request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {

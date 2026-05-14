@@ -89,7 +89,6 @@
     "webdav": "^5.10.0"
   },
   "scripts": {
-    "prepare": "ts-patch install",
-    "prisma:generate": "prisma generate --schema=apps/backend/prisma/schema.prisma && node apps/backend/tools/patch-prisma-client.cjs"
+    "prepare": "ts-patch install && nx run prisma-client:generate"
   }
 }

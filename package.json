@@ -63,6 +63,7 @@
     "@nestia/e2e": "^11.2.0",
     "@nestia/fetcher": "^11.2.0",
     "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.0",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.0",
@@ -78,7 +79,8 @@
     "react-router-dom": "6.30.3",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
-    "typia": "^12.1.1"
+    "typia": "^12.1.1",
+    "webdav": "^5.10.0"
   },
   "scripts": {
     "prepare": "ts-patch install"

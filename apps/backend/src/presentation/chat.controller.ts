@@ -14,7 +14,7 @@ export class ChatController {
     @TypedParam('fileId') fileId: string,
     @TypedBody() body: ChatDto.ChatRequest,
     @CurrentUser() user: IJwtPayload,
-  ) {
+  ): Promise<ChatDto.ChatResponse> {
     return ChatProvider.chat(fileId, user.tenantId, user.userId, body.question);
   }
 }

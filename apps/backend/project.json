@@ -60,6 +60,13 @@
           "buildTarget": "backend:build:production"
         }
       }
+    },
+    "sdk": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nestia sdk --project tsconfig.app.json",
+        "cwd": "apps/backend"
+      }
     }
   }
 }

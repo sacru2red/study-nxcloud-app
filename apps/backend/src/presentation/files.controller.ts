@@ -16,7 +16,7 @@ export class FilesController {
     @TypedParam('tenantId') _tenantId: string,
     @CurrentUser() user: IJwtPayload,
     @TypedFormData.Body(() => Multer()) body: FilesDto.IUploadBody,
-  ) {
+  ): Promise<FilesDto.FileItem> {
     const file = body.file;
     const buffer = Buffer.from(await file.arrayBuffer());
     return FilesProvider.uploadFile(user.tenantId, user.userId, {
@@ -31,7 +31,7 @@ export class FilesController {
   async list(
     @TypedParam('tenantId') _tenantId: string,
     @CurrentUser() user: IJwtPayload,
-  ) {
+  ): Promise<FilesDto.FileItem[]> {
     return FilesProvider.listFiles(user.tenantId);
   }
 }
@@ -43,7 +43,7 @@ export class FileStatusController {
   async indexStatus(
     @TypedParam('fileId') fileId: string,
     @CurrentUser() user: IJwtPayload,
-  ) {
+  ): Promise<FilesDto.IndexStatusResponse> {
     return FilesProvider.getIndexStatus(fileId, user.tenantId);
   }
 }

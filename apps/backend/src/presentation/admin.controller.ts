@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { IJwtPayload } from './auth.dto';
+import { AdminDto } from './admin.dto';
 
 @Controller('admin/tenants/:tenantId')
 @UseGuards(JwtAuthGuard, TenantGuard)
@@ -13,7 +14,7 @@ export class AdminController {
   async getUsersUsage(
     @TypedParam('tenantId') _tenantId: string,
     @CurrentUser() user: IJwtPayload,
-  ) {
+  ): Promise<AdminDto.UsersUsageResponse> {
     if (user.role !== 'admin') throw new Error('Forbidden');
     return AdminProvider.getUsersUsage(user.tenantId);
   }

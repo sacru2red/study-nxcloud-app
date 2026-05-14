@@ -4,13 +4,13 @@ import {
   ExecutionContext,
   ForbiddenException,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { IJwtPayload } from '../types';
+import { AuthenticatedRequest } from './jwt-auth.guard';
 
 @Injectable()
 export class TenantGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request: Request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user: IJwtPayload = request.user;
 
     const tenantId = request.params['tenantId'];

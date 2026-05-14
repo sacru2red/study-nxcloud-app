@@ -10,12 +10,12 @@ import { IJwtPayload } from '../types';
 @Injectable()
 export class TenantGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<Request>();
-    const user: IJwtPayload = (request as any).user;
+    const request: Request = context.switchToHttp().getRequest();
+    const user: IJwtPayload = request.user;
 
     const tenantId = request.params['tenantId'];
     if (!tenantId) {
-      return true; // no tenant param to check
+      return true;
     }
 
     if (user.tenantId !== tenantId) {

@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { IJwtPayload } from '../../auth/dto';
+import { IJwtPayload } from '../types';
 
 @Injectable()
 export class TenantGuard implements CanActivate {

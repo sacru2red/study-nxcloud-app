@@ -1,25 +1,20 @@
 import { useState, type FormEvent } from 'react';
-import { useAuth } from '../hooks/use-auth';
+import { Navigate } from '@tanstack/react-router';
+import { useAtomValue } from 'jotai';
+import { isAuthenticatedAtom } from '../stores/auth';
+import { useLogin } from '../queries';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const isAuth = useAtomValue(isAuthenticatedAtom);
+  const loginMutation = useLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  if (isAuth) return <Navigate to="/" />;
+
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await login({ email, password });
-      window.location.href = '/';
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
+    loginMutation.mutate({ email, password });
   };
 
   return (
@@ -30,9 +25,9 @@ export function LoginPage() {
       >
         <h1 className="mb-6 text-center text-2xl font-bold">Sign In</h1>
 
-        {error && (
+        {loginMutation.isError && (
           <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-            {error}
+            {loginMutation.error?.message || 'Login failed'}
           </div>
         )}
 
@@ -66,10 +61,10 @@ export function LoginPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loginMutation.isPending}
           className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? 'Signing in...' : 'Sign In'}
+          {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
     </div>

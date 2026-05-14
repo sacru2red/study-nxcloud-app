@@ -1,4 +1,4 @@
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../hooks/use-auth';
 
 export function AdminPage() {
   const { user, logout } = useAuth();

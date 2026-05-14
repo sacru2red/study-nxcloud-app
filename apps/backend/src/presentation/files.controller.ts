@@ -1,0 +1,49 @@
+import { Controller, UseGuards } from '@nestjs/common';
+import { TypedRoute, TypedParam, TypedFormData } from '@nestia/core';
+import Multer from 'multer';
+import { FilesProvider } from '../providers/files.provider';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { TenantGuard } from '../common/guards/tenant.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { IJwtPayload } from './auth.dto';
+import { FilesDto } from './files.dto';
+
+@Controller('tenants/:tenantId/files')
+@UseGuards(JwtAuthGuard, TenantGuard)
+export class FilesController {
+  @TypedRoute.Post()
+  async upload(
+    @TypedParam('tenantId') _tenantId: string,
+    @CurrentUser() user: IJwtPayload,
+    @TypedFormData.Body(() => Multer()) body: FilesDto.IUploadBody,
+  ) {
+    const file = body.file;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    return FilesProvider.uploadFile(user.tenantId, user.userId, {
+      originalname: file.name,
+      buffer,
+      mimetype: file.type,
+      size: file.size,
+    });
+  }
+
+  @TypedRoute.Get()
+  async list(
+    @TypedParam('tenantId') _tenantId: string,
+    @CurrentUser() user: IJwtPayload,
+  ) {
+    return FilesProvider.listFiles(user.tenantId);
+  }
+}
+
+@Controller('files')
+@UseGuards(JwtAuthGuard)
+export class FileStatusController {
+  @TypedRoute.Get(':fileId/index-status')
+  async indexStatus(
+    @TypedParam('fileId') fileId: string,
+    @CurrentUser() user: IJwtPayload,
+  ) {
+    return FilesProvider.getIndexStatus(fileId, user.tenantId);
+  }
+}

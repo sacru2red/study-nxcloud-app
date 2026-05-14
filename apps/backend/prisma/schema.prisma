@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tenant {
+  tenantId  String   @id @default(dbgenerated("gen_random_uuid()")) @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(255)
+  ncGroupId String   @unique @map("nc_group_id") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  users        User[]
+  documents    Document[]
+  chunks       DocumentChunk[]
+  chatSessions ChatSession[]
+
+  @@map("tenants")
+}
+
+model User {
+  userId       String   @id @default(dbgenerated("gen_random_uuid()")) @map("user_id") @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  ncUserId     String   @map("nc_user_id") @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         String   @default("user") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at")
+  tenant       Tenant   @relation(fields: [tenantId], references: [tenantId])
+  documents    Document[]
+  chatSessions ChatSession[]
+
+  @@map("users")
+}
+
+model Document {
+  documentId  String   @id @default(dbgenerated("gen_random_uuid()")) @map("document_id") @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  ownerUserId String   @map("owner_user_id") @db.Uuid
+  ncFileId    String?  @map("nc_file_id") @db.VarChar(255)
+  fileName    String   @map("file_name") @db.VarChar(255)
+  ncPath      String?  @map("nc_path") @db.VarChar(500)
+  mimeType    String?  @map("mime_type") @db.VarChar(100)
+  fileSize    BigInt   @default(0) @map("file_size")
+  indexStatus String   @default("PENDING") @map("index_status") @db.VarChar(20)
+  pageCount   Int      @default(0) @map("page_count")
+  chunkCount  Int      @default(0) @map("chunk_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  indexedAt   DateTime? @map("indexed_at")
+  tenant      Tenant   @relation(fields: [tenantId], references: [tenantId])
+  owner       User     @relation(fields: [ownerUserId], references: [userId])
+  chunks      DocumentChunk[]
+  chatSessions ChatSession[]
+
+  @@map("documents")
+}
+
+model DocumentChunk {
+  chunkId     String   @id @default(dbgenerated("gen_random_uuid()")) @map("chunk_id") @db.Uuid
+  documentId  String   @map("document_id") @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  pageNo      Int      @map("page_no")
+  paragraphNo Int      @map("paragraph_no")
+  chunkText   String   @map("chunk_text") @db.Text
+  bboxJson    String?  @map("bbox_json") @db.Text
+  embedding   Unsupported("vector(768)")?
+  createdAt   DateTime @default(now()) @map("created_at")
+  document    Document @relation(fields: [documentId], references: [documentId])
+  tenant      Tenant   @relation(fields: [tenantId], references: [tenantId])
+
+  @@map("document_chunks")
+}
+
+model ChatSession {
+  sessionId   String    @id @default(dbgenerated("gen_random_uuid()")) @map("session_id") @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  documentId  String?   @map("document_id") @db.Uuid
+  folderId    String?   @map("folder_id") @db.VarChar(255)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  tenant      Tenant    @relation(fields: [tenantId], references: [tenantId])
+  user        User      @relation(fields: [userId], references: [userId])
+  document    Document? @relation(fields: [documentId], references: [documentId])
+  messages    ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  messageId   String      @id @default(dbgenerated("gen_random_uuid()")) @map("message_id") @db.Uuid
+  sessionId   String      @map("session_id") @db.Uuid
+  role        String      @db.VarChar(20)
+  message     String      @db.Text
+  sourcesJson String?     @map("sources_json") @db.Text
+  createdAt   DateTime    @default(now()) @map("created_at")
+  session     ChatSession @relation(fields: [sessionId], references: [sessionId])
+
+  @@map("chat_messages")
+}

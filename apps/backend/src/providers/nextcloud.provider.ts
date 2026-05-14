@@ -1,4 +1,4 @@
-import { createClient, WebDAVClient } from 'webdav';
+import { createClient, type FileStat, type WebDAVClient } from 'webdav';
 import axios from 'axios';
 
 const ncUrl = process.env.NEXTCLOUD_URL || 'http://localhost:8080';
@@ -42,7 +42,7 @@ export namespace NextcloudProvider {
     const dirPath = `/files/${ncUser}/${tenantId}`;
     try {
       const items = await client.getDirectoryContents(dirPath);
-      return (items as any[]).map((item) => ({
+      return items.map((item: FileStat) => ({
         filename: item.filename,
         basename: item.basename,
         size: item.size ?? 0,

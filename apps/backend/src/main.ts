@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { OpenAPIObject } from '@nestjs/swagger';
 import { AppModule } from './app/app.module';
 import { NestiaSwaggerComposer } from '@nestia/sdk';
 import { SwaggerModule } from '@nestjs/swagger';
@@ -17,8 +18,7 @@ async function bootstrap() {
 
   if (process.env.NODE_ENV !== 'production') {
     const document = await NestiaSwaggerComposer.document(app, {});
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    SwaggerModule.setup('swagger-doc', app, document as any);
+    SwaggerModule.setup('swagger-doc', app, document as OpenAPIObject);
   }
 
   const port = process.env.PORT || 3000;

@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import * as ReactDOM from 'react-dom/client';
-import { AuthProvider } from './hooks/useAuth';
+import { AuthProvider } from './hooks/use-auth';
 import App from './app/app';
 import './styles.css';
 

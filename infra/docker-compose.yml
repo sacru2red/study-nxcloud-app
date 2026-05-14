@@ -1,0 +1,41 @@
+version: '3.8'
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: dotco-postgres
+    environment:
+      POSTGRES_DB: dotco
+      POSTGRES_USER: dotco
+      POSTGRES_PASSWORD: dotco123
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U dotco']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nextcloud:
+    image: nextcloud:latest
+    container_name: dotco-nextcloud
+    environment:
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: admin123
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: dotco
+      POSTGRES_USER: dotco
+      POSTGRES_PASSWORD: dotco123
+    ports:
+      - '8080:80'
+    volumes:
+      - nextcloud_data:/var/www/html
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  nextcloud_data:

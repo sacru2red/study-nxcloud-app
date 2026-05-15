@@ -1,4 +1,4 @@
-import * as api from "./module";
+import * as api from './module'
 
-export * from "./module";
-export default api;
+export * from './module'
+export default api

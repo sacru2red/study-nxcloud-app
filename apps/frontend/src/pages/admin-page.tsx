@@ -1,15 +1,10 @@
-import { Navigate } from '@tanstack/react-router';
-import { useAtomValue } from 'jotai';
-import { userAtom, isAuthenticatedAtom } from '../stores/auth';
-import { useUsersUsage } from '../queries';
+import { Navigate } from '@tanstack/react-router'
+import { useAtomValue } from 'jotai'
+import { userAtom, isAuthenticatedAtom } from '../stores/auth'
+import { useUsersUsage } from '../queries'
 
 function ProgressBar({ percent }: { percent: number }) {
-  const barColor =
-    percent >= 80
-      ? 'bg-red-500'
-      : percent >= 50
-        ? 'bg-yellow-500'
-        : 'bg-green-500';
+  const barColor = percent >= 80 ? 'bg-red-500' : percent >= 50 ? 'bg-yellow-500' : 'bg-green-500'
 
   return (
     <div className="flex items-center gap-2">
@@ -21,26 +16,24 @@ function ProgressBar({ percent }: { percent: number }) {
       </div>
       <span className="w-10 text-right text-xs text-gray-500">{percent}%</span>
     </div>
-  );
+  )
 }
 
 export function AdminPage() {
-  const isAuth = useAtomValue(isAuthenticatedAtom);
-  const user = useAtomValue(userAtom);
+  const isAuth = useAtomValue(isAuthenticatedAtom)
+  const user = useAtomValue(userAtom)
 
-  if (!isAuth) return <Navigate to="/login" />;
-  if (user?.role !== 'admin') return <Navigate to="/" />;
+  if (!isAuth) return <Navigate to="/login" />
+  if (user?.role !== 'admin') return <Navigate to="/" />
 
-  const { data, isLoading, isError, refetch } = useUsersUsage(user?.tenantId);
+  const { data, isLoading, isError, refetch } = useUsersUsage(user?.tenantId)
 
   return (
     <div className="mx-auto max-w-6xl p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-800">Admin Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            User storage usage for {user?.email}
-          </p>
+          <p className="mt-1 text-sm text-gray-500">User storage usage for {user?.email}</p>
         </div>
         <button
           onClick={() => refetch()}
@@ -53,11 +46,7 @@ export function AdminPage() {
       {isLoading && (
         <div className="flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-2">
-            <svg
-              className="h-6 w-6 animate-spin text-blue-400"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-6 w-6 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
               <circle
                 className="opacity-25"
                 cx="12"
@@ -105,9 +94,7 @@ export function AdminPage() {
             <tbody className="divide-y">
               {data.users.map((u) => (
                 <tr key={u.userId} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">
-                    {u.email}
-                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-800">{u.email}</td>
                   <td className="px-4 py-3 text-gray-500">{u.ncUserId}</td>
                   <td className="px-4 py-3">
                     <span
@@ -121,14 +108,10 @@ export function AdminPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
-                    {u.usedBytes > 0
-                      ? `${(u.usedBytes / (1024 * 1024)).toFixed(1)} MB`
-                      : '0 MB'}
+                    {u.usedBytes > 0 ? `${(u.usedBytes / (1024 * 1024)).toFixed(1)} MB` : '0 MB'}
                   </td>
                   <td className="px-4 py-3 text-gray-600">
-                    {u.quotaBytes > 0
-                      ? `${(u.quotaBytes / (1024 * 1024)).toFixed(1)} MB`
-                      : 'N/A'}
+                    {u.quotaBytes > 0 ? `${(u.quotaBytes / (1024 * 1024)).toFixed(1)} MB` : 'N/A'}
                   </td>
                   <td className="px-4 py-3">
                     <ProgressBar percent={u.usagePercent} />
@@ -140,5 +123,5 @@ export function AdminPage() {
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -10,7 +10,5 @@
   "bracketSameLine": false,
   "endOfLine": "crlf",
   "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindAttributes": [
-    "class", "className", "ngClass", "class:list", "/[a-z-]+ClassName/"
-  ]
+  "tailwindAttributes": ["class", "className", "ngClass", "class:list", "/[a-z-]+ClassName/"]
 }

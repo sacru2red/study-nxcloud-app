@@ -1,53 +1,48 @@
-import { useState, useRef, useEffect } from 'react';
-import { useChat } from '../queries';
-import { SourceCard } from './source-card';
-import type { ChatSource } from './source-card';
+import { useState, useRef, useEffect } from 'react'
+import { useChat } from '../queries'
+import { SourceCard } from './source-card'
+import type { ChatSource } from './source-card'
 
 interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  sources?: ChatSource[];
+  role: 'user' | 'assistant'
+  content: string
+  sources?: ChatSource[]
 }
 
 export interface ChatPanelProps {
-  fileId: string | null;
-  fileName: string | null;
-  indexStatus: string | null;
-  onPageNavigate?: (pageNo: number) => void;
+  fileId: string | null
+  fileName: string | null
+  indexStatus: string | null
+  onPageNavigate?: (pageNo: number) => void
 }
 
-export function ChatPanel({
-  fileId,
-  fileName,
-  indexStatus,
-  onPageNavigate,
-}: ChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const chatMutation = useChat(fileId ?? '');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+export function ChatPanel({ fileId, fileName, indexStatus, onPageNavigate }: ChatPanelProps) {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const chatMutation = useChat(fileId ?? '')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
-  const isDisabled = !fileId || indexStatus !== 'COMPLETED';
+  const isDisabled = !fileId || indexStatus !== 'COMPLETED'
 
   const getPlaceholder = () => {
-    if (!fileId) return 'Select a file to start chatting';
+    if (!fileId) return 'Select a file to start chatting'
     if (indexStatus === 'PENDING' || indexStatus === 'PROCESSING') {
-      return 'File is being indexed...';
+      return 'File is being indexed...'
     }
-    if (indexStatus === 'FAILED') return 'File indexing failed';
-    return 'Ask a question about this document...';
-  };
+    if (indexStatus === 'FAILED') return 'File indexing failed'
+    return 'Ask a question about this document...'
+  }
 
   const handleSubmit = () => {
-    if (!input.trim() || !fileId || isDisabled) return;
+    if (!input.trim() || !fileId || isDisabled) return
 
-    const question = input.trim();
-    setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: question }]);
+    const question = input.trim()
+    setInput('')
+    setMessages((prev) => [...prev, { role: 'user', content: question }])
 
     chatMutation.mutate(question, {
       onSuccess: (res) => {
@@ -58,7 +53,7 @@ export function ChatPanel({
             content: res.answer,
             sources: res.sources,
           },
-        ]);
+        ])
       },
       onError: () => {
         setMessages((prev) => [
@@ -67,10 +62,10 @@ export function ChatPanel({
             role: 'assistant',
             content: 'Sorry, an error occurred while processing your question.',
           },
-        ]);
+        ])
       },
-    });
-  };
+    })
+  }
 
   return (
     <div className="flex w-96 flex-col border-l bg-white">
@@ -119,13 +114,7 @@ export function ChatPanel({
           <div className="space-y-4">
             {messages.map((msg, i) => (
               <div key={i}>
-                <div
-                  className={
-                    msg.role === 'user'
-                      ? 'flex justify-end'
-                      : 'flex justify-start'
-                  }
-                >
+                <div className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
                   <div
                     className={
                       msg.role === 'user'
@@ -139,11 +128,7 @@ export function ChatPanel({
                 {msg.sources && msg.sources.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {msg.sources.map((source, j) => (
-                      <SourceCard
-                        key={j}
-                        source={source}
-                        onPageClick={onPageNavigate}
-                      />
+                      <SourceCard key={j} source={source} onPageClick={onPageNavigate} />
                     ))}
                   </div>
                 )}
@@ -153,11 +138,7 @@ export function ChatPanel({
               <div className="flex justify-start">
                 <div className="rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-2 text-sm text-gray-400">
                   <span className="flex items-center gap-1">
-                    <svg
-                      className="h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle
                         className="opacity-25"
                         cx="12"
@@ -190,8 +171,8 @@ export function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit();
+                e.preventDefault()
+                handleSubmit()
               }
             }}
             placeholder={getPlaceholder()}
@@ -204,11 +185,7 @@ export function ChatPanel({
             className="rounded-lg bg-blue-500 px-4 py-2 text-sm text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {chatMutation.isPending ? (
-              <svg
-                className="h-4 w-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle
                   className="opacity-25"
                   cx="12"
@@ -230,5 +207,5 @@ export function ChatPanel({
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -1,1 +1,1 @@
-export type { Resolved } from "typia";
+export type { Resolved } from 'typia'

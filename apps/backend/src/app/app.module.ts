@@ -1,14 +1,11 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { JwtModule, type JwtSignOptions } from '@nestjs/jwt';
-import { AppController } from '../presentation/app.controller';
-import { AuthController } from '../presentation/auth.controller';
-import {
-  FilesController,
-  FileStatusController,
-} from '../presentation/files.controller';
-import { AdminController } from '../presentation/admin.controller';
-import { ChatController } from '../presentation/chat.controller';
+import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+import { JwtModule, type JwtSignOptions } from '@nestjs/jwt'
+import { AppController } from '../presentation/app.controller'
+import { AuthController } from '../presentation/auth.controller'
+import { FilesController, FileStatusController } from '../presentation/files.controller'
+import { AdminController } from '../presentation/admin.controller'
+import { ChatController } from '../presentation/chat.controller'
 
 @Module({
   imports: [

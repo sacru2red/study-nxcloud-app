@@ -1,10 +1,10 @@
 // @ts-check
-import { NxAppWebpackPlugin } from '@nx/webpack/app-plugin.js';
-import { join, resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { NxAppWebpackPlugin } from '@nx/webpack/app-plugin.js'
+import { join, resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 export default {
   output: {
@@ -31,9 +31,7 @@ export default {
       // See: @nx/webpack/src/plugins/nx-webpack-plugin/lib/compiler-loaders.js line 41
       //   `transpileOnly: !hasPlugin`
       // nestia does NOT work via Nx's transformers option (per nestia docs), only via ts-patch.
-      transformers: [
-        { name: resolve(__dirname, '../../tools/noop-transformer') },
-      ],
+      transformers: [{ name: resolve(__dirname, '../../tools/noop-transformer') }],
     }),
   ],
-};
+}

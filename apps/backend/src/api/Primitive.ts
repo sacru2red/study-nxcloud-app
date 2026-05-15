@@ -1,1 +1,1 @@
-export type { Primitive } from "typia";
+export type { Primitive } from 'typia'

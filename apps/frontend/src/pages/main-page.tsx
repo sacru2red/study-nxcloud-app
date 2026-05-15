@@ -1,39 +1,37 @@
-import { useState, useRef } from 'react';
-import { Navigate } from '@tanstack/react-router';
-import { useAtom } from 'jotai';
-import { userAtom, isAuthenticatedAtom } from '../stores/auth';
-import { selectedFileIdAtom } from '../stores/files';
-import { useFiles, useUploadFile, useIndexStatus } from '../queries';
-import { PdfViewer } from '../components/pdf-viewer';
-import { ChatPanel } from '../components/chat-panel';
+import { useState, useRef } from 'react'
+import { Navigate } from '@tanstack/react-router'
+import { useAtom } from 'jotai'
+import { userAtom, isAuthenticatedAtom } from '../stores/auth'
+import { selectedFileIdAtom } from '../stores/files'
+import { useFiles, useUploadFile, useIndexStatus } from '../queries'
+import { PdfViewer } from '../components/pdf-viewer'
+import { ChatPanel } from '../components/chat-panel'
 
 export function MainPage() {
-  const [isAuth] = useAtom(isAuthenticatedAtom);
-  const [user] = useAtom(userAtom);
-  const [selectedFileId, setSelectedFileId] = useAtom(selectedFileIdAtom);
-  const [targetPage, setTargetPage] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isAuth] = useAtom(isAuthenticatedAtom)
+  const [user] = useAtom(userAtom)
+  const [selectedFileId, setSelectedFileId] = useAtom(selectedFileIdAtom)
+  const [targetPage, setTargetPage] = useState<number | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: docs, isLoading } = useFiles(user?.tenantId);
-  const uploadMutation = useUploadFile(user?.tenantId);
+  const { data: docs, isLoading } = useFiles(user?.tenantId)
+  const uploadMutation = useUploadFile(user?.tenantId)
 
-  const selectedDoc = docs?.find((d) => d.documentId === selectedFileId);
+  const selectedDoc = docs?.find((d) => d.documentId === selectedFileId)
 
   const handleSelectFile = (docId: string) => {
-    setSelectedFileId(docId);
-    setTargetPage(null);
-  };
+    setSelectedFileId(docId)
+    setTargetPage(null)
+  }
 
   const { data: indexStatusData } = useIndexStatus(
     selectedFileId,
-    selectedDoc?.indexStatus === 'PENDING' ||
-      selectedDoc?.indexStatus === 'PROCESSING',
-  );
+    selectedDoc?.indexStatus === 'PENDING' || selectedDoc?.indexStatus === 'PROCESSING',
+  )
 
-  const currentIndexStatus =
-    indexStatusData?.status ?? selectedDoc?.indexStatus ?? null;
+  const currentIndexStatus = indexStatusData?.status ?? selectedDoc?.indexStatus ?? null
 
-  if (!isAuth) return <Navigate to="/login" />;
+  if (!isAuth) return <Navigate to="/login" />
 
   return (
     <div className="flex flex-1">
@@ -44,11 +42,11 @@ export function MainPage() {
           accept=".pdf"
           className="hidden"
           onChange={(e) => {
-            const file = e.target.files?.[0];
+            const file = e.target.files?.[0]
             if (file) {
-              uploadMutation.mutate(file);
+              uploadMutation.mutate(file)
             }
-            e.target.value = '';
+            e.target.value = ''
           }}
         />
         <button
@@ -58,11 +56,7 @@ export function MainPage() {
         >
           {uploadMutation.isPending ? (
             <span className="flex items-center gap-2">
-              <svg
-                className="h-4 w-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle
                   className="opacity-25"
                   cx="12"
@@ -85,19 +79,13 @@ export function MainPage() {
         </button>
 
         {uploadMutation.isError && (
-          <div className="mb-3 rounded bg-red-50 p-2 text-xs text-red-600">
-            Upload failed
-          </div>
+          <div className="mb-3 rounded bg-red-50 p-2 text-xs text-red-600">Upload failed</div>
         )}
 
         {isLoading ? (
-          <div className="py-8 text-center text-sm text-gray-400">
-            Loading...
-          </div>
+          <div className="py-8 text-center text-sm text-gray-400">Loading...</div>
         ) : !docs || docs.length === 0 ? (
-          <div className="py-8 text-center text-sm text-gray-400">
-            No files yet
-          </div>
+          <div className="py-8 text-center text-sm text-gray-400">No files yet</div>
         ) : (
           <ul className="space-y-2">
             {docs.map((doc) => (
@@ -105,19 +93,15 @@ export function MainPage() {
                 key={doc.documentId}
                 onClick={() => handleSelectFile(doc.documentId)}
                 className={
-                  'cursor-pointer rounded-lg border bg-white p-3 text-sm hover:shadow-sm ' +
-                  (selectedFileId === doc.documentId
-                    ? 'border-blue-400 ring-1 ring-blue-200'
-                    : '')
+                  'cursor-pointer rounded-lg border bg-white p-3 text-sm hover:shadow-sm' +
+                  (selectedFileId === doc.documentId ? 'border-blue-400 ring-1 ring-blue-200' : '')
                 }
               >
-                <p className="truncate font-medium text-gray-800">
-                  {doc.fileName}
-                </p>
+                <p className="truncate font-medium text-gray-800">{doc.fileName}</p>
                 <div className="mt-1 flex items-center gap-2">
                   <span
                     className={
-                      'inline-block rounded px-1.5 py-0.5 text-xs font-medium ' +
+                      'inline-block rounded px-1.5 py-0.5 text-xs font-medium' +
                       (doc.indexStatus === 'COMPLETED'
                         ? 'bg-green-100 text-green-700'
                         : doc.indexStatus === 'PENDING'
@@ -127,8 +111,7 @@ export function MainPage() {
                             : 'bg-red-100 text-red-700')
                     }
                   >
-                    {selectedFileId === doc.documentId &&
-                    indexStatusData?.status
+                    {selectedFileId === doc.documentId && indexStatusData?.status
                       ? indexStatusData.status
                       : doc.indexStatus}
                   </span>
@@ -155,5 +138,5 @@ export function MainPage() {
         onPageNavigate={(page) => setTargetPage(page)}
       />
     </div>
-  );
+  )
 }

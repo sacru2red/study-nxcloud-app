@@ -63,9 +63,7 @@
     },
     "sdk": {
       "executor": "nx:run-commands",
-      "dependsOn": [
-        "prisma-client:generate"
-      ],
+      "dependsOn": ["prisma-client:generate"],
       "options": {
         "command": "npx nestia sdk --project tsconfig.app.json",
         "cwd": "apps/backend"

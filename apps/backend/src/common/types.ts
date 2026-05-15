@@ -1,7 +1,7 @@
 export interface IJwtPayload {
-  userId: string;
-  tenantId: string;
-  ncGroupId: string;
-  email: string;
-  role: string;
+  userId: string
+  tenantId: string
+  ncGroupId: string
+  email: string
+  role: string
 }

@@ -1,12 +1,12 @@
-import { Controller, UseGuards } from '@nestjs/common';
-import { TypedRoute, TypedParam, TypedFormData } from '@nestia/core';
-import Multer from 'multer';
-import { FilesProvider } from '../providers/files.provider';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { TenantGuard } from '../common/guards/tenant.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { IJwtPayload } from './auth.dto';
-import { FilesDto } from './files.dto';
+import { Controller, UseGuards } from '@nestjs/common'
+import { TypedRoute, TypedParam, TypedFormData } from '@nestia/core'
+import Multer from 'multer'
+import { FilesProvider } from '../providers/files.provider'
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
+import { TenantGuard } from '../common/guards/tenant.guard'
+import { CurrentUser } from '../common/decorators/current-user.decorator'
+import { IJwtPayload } from './auth.dto'
+import { FilesDto } from './files.dto'
 
 @Controller('tenants/:tenantId/files')
 @UseGuards(JwtAuthGuard, TenantGuard)
@@ -17,13 +17,13 @@ export class FilesController {
     @CurrentUser() user: IJwtPayload,
     @TypedFormData.Body(() => Multer()) body: FilesDto.IUploadBody,
   ): Promise<FilesDto.FileItem> {
-    const file = body.file;
+    const file = body.file
     return FilesProvider.uploadFile(user.tenantId, user.userId, {
       originalname: file.name,
       buffer: Buffer.from(await file.arrayBuffer()),
       mimetype: file.type,
       size: file.size,
-    });
+    })
   }
 
   @TypedRoute.Get()
@@ -31,7 +31,7 @@ export class FilesController {
     @TypedParam('tenantId') _tenantId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FilesDto.FileItem[]> {
-    return FilesProvider.listFiles(user.tenantId);
+    return FilesProvider.listFiles(user.tenantId)
   }
 }
 
@@ -43,6 +43,6 @@ export class FileStatusController {
     @TypedParam('fileId') fileId: string,
     @CurrentUser() user: IJwtPayload,
   ): Promise<FilesDto.IndexStatusResponse> {
-    return FilesProvider.getIndexStatus(fileId, user.tenantId);
+    return FilesProvider.getIndexStatus(fileId, user.tenantId)
   }
 }

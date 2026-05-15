@@ -1,11 +1,11 @@
-import { PrismaClient } from './generated/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import * as bcrypt from 'bcrypt';
+import { PrismaClient } from './generated/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import * as bcrypt from 'bcrypt'
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
-});
-const prisma = new PrismaClient({ adapter });
+})
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   const tenants = await Promise.all([
@@ -15,9 +15,9 @@ async function main() {
     prisma.tenant.create({
       data: { name: 'Tenant B', ncGroupId: 'tenant-b' },
     }),
-  ]);
+  ])
 
-  const hash = await bcrypt.hash('password123', 10);
+  const hash = await bcrypt.hash('password123', 10)
 
   const users = [
     {
@@ -56,17 +56,17 @@ async function main() {
       role: 'user',
       tenantId: tenants[1].tenantId,
     },
-  ];
+  ]
 
   for (const u of users) {
     await prisma.user.create({
       data: { ...u, passwordHash: hash },
-    });
+    })
   }
 
-  console.log('Seed complete: 2 tenants, 6 users');
+  console.log('Seed complete: 2 tenants, 6 users')
 }
 
 main()
   .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .finally(() => prisma.$disconnect())

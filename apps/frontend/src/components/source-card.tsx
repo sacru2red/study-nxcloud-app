@@ -1,24 +1,23 @@
 export interface ChatSource {
-  fileName: string;
-  pageNo: number;
-  paragraphNo: number;
-  text: string;
-  similarity: number;
+  fileName: string
+  pageNo: number
+  paragraphNo: number
+  text: string
+  similarity: number
 }
 
 export interface SourceCardProps {
-  source: ChatSource;
-  onPageClick?: (pageNo: number) => void;
+  source: ChatSource
+  onPageClick?: (pageNo: number) => void
 }
 
 export function SourceCard({ source, onPageClick }: SourceCardProps) {
-  const truncatedText =
-    source.text.length > 150 ? source.text.slice(0, 150) + '...' : source.text;
+  const truncatedText = source.text.length > 150 ? source.text.slice(0, 150) + '...' : source.text
 
   return (
     <div
       className={
-        'rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs ' +
+        'rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs' +
         (onPageClick ? 'cursor-pointer hover:border-blue-300' : '')
       }
       onClick={() => onPageClick?.(source.pageNo)}
@@ -47,5 +46,5 @@ export function SourceCard({ source, onPageClick }: SourceCardProps) {
       </p>
       <p className="mt-1 leading-relaxed text-gray-600">{truncatedText}</p>
     </div>
-  );
+  )
 }

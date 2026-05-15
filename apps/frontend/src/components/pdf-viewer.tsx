@@ -1,24 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'
 
 export interface PdfViewerProps {
-  ncDownloadUrl: string | null;
-  fileName: string | null;
-  targetPage?: number | null;
+  ncDownloadUrl: string | null
+  fileName: string | null
+  targetPage?: number | null
 }
 
-export function PdfViewer({
-  ncDownloadUrl,
-  fileName,
-  targetPage,
-}: PdfViewerProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [loadError, setLoadError] = useState(false);
+export function PdfViewer({ ncDownloadUrl, fileName, targetPage }: PdfViewerProps) {
+  const [currentPage, setCurrentPage] = useState(1)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     if (targetPage && targetPage >= 1) {
-      setCurrentPage(targetPage);
+      setCurrentPage(targetPage)
     }
-  }, [targetPage]);
+  }, [targetPage])
 
   if (!ncDownloadUrl || !fileName) {
     return (
@@ -40,7 +36,7 @@ export function PdfViewer({
           <p className="text-sm">Select a file to view</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (loadError) {
@@ -56,10 +52,10 @@ export function PdfViewer({
           </button>
         </div>
       </div>
-    );
+    )
   }
 
-  const pdfUrl = `${ncDownloadUrl}#page=${currentPage}`;
+  const pdfUrl = `${ncDownloadUrl}#page=${currentPage}`
 
   return (
     <div className="flex flex-1 flex-col">
@@ -88,5 +84,5 @@ export function PdfViewer({
         </button>
       </div>
     </div>
-  );
+  )
 }

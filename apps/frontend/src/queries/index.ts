@@ -31,6 +31,7 @@ export function useLogin() {
 export interface DocumentResponse {
   documentId: string
   tenantId: string
+  folderId: string | null
   fileName: string
   ncPath: string | null
   ncDownloadUrl: string | null
@@ -75,6 +76,20 @@ export function useChat(fileId: string) {
           sources: any[]
           sessionId: string
         }>(`/files/${fileId}/chat`, { question })
+        .then((r) => r.data),
+  })
+}
+
+export function useFolderChat(folderId: string) {
+  return useMutation({
+    mutationFn: (question: string) =>
+      client
+        .post<{
+          answer: string
+          sources: any[]
+          sessionId: string | null
+          documentCount: number
+        }>(`/folders/${folderId}/chat`, { question })
         .then((r) => r.data),
   })
 }

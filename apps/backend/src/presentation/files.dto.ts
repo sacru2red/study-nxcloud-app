@@ -3,11 +3,13 @@ import { tags } from 'typia'
 export namespace FilesDto {
   export interface IUploadBody {
     file: File
+    folderId?: string
   }
 
   export interface FileItem {
     documentId: string & tags.Format<'uuid'>
     tenantId: string & tags.Format<'uuid'>
+    folderId: string | null
     fileName: string
     ncPath: string | null
     ncDownloadUrl: string | null

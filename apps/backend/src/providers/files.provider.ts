@@ -16,6 +16,7 @@ export namespace FilesProvider {
     return {
       documentId: doc.documentId,
       tenantId: doc.tenantId,
+      folderId: doc.folderId ?? null,
       fileName: doc.fileName,
       ncPath,
       ncDownloadUrl,
@@ -38,6 +39,7 @@ export namespace FilesProvider {
       mimetype: string
       size: number
     },
+    folderId?: string,
   ) => {
     const ncResult = await NextcloudProvider.uploadFile(
       tenantId,
@@ -50,6 +52,7 @@ export namespace FilesProvider {
       data: {
         tenantId,
         ownerUserId,
+        folderId: folderId ?? null,
         ncFileId: ncResult.ncFileId,
         fileName: file.originalname,
         ncPath: ncResult.ncPath,

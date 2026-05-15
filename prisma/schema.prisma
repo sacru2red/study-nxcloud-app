@@ -39,6 +39,7 @@ model Document {
   documentId   String          @id @default(dbgenerated("gen_random_uuid()")) @map("document_id") @db.Uuid
   tenantId     String          @map("tenant_id") @db.Uuid
   ownerUserId  String          @map("owner_user_id") @db.Uuid
+  folderId     String?         @map("folder_id") @db.VarChar(255)
   ncFileId     String?         @map("nc_file_id") @db.VarChar(255)
   fileName     String          @map("file_name") @db.VarChar(255)
   ncPath       String?         @map("nc_path") @db.VarChar(500)

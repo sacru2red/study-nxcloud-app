@@ -6,6 +6,7 @@ import { AuthController } from '../presentation/auth.controller'
 import { FilesController, FileStatusController } from '../presentation/files.controller'
 import { AdminController } from '../presentation/admin.controller'
 import { ChatController } from '../presentation/chat.controller'
+import { FolderController } from '../presentation/folder.controller'
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ChatController } from '../presentation/chat.controller'
     FileStatusController,
     AdminController,
     ChatController,
+    FolderController,
   ],
 })
 export class AppModule {}

@@ -78,6 +78,7 @@
     "@tanstack/react-router": "^1.169.2",
     "axios": "^1.6.0",
     "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.2",
     "jotai": "^2.20.0",
     "pdf-parse": "^2.4.5",
     "pg": "^8.20.0",

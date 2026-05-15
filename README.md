@@ -88,6 +88,22 @@ npx nx run-many -t serve -p backend frontend
 | POST   | `/api/files/:fileId/chat`                  | AI 채팅 질문           | JWT          |
 | GET    | `/api/admin/tenants/:tenantId/users-usage` | 사용량 조회            | JWT + Admin  |
 
+## E2E 테스트 실행
+
+백엔드 E2E 테스트를 실행하려면 먼저 인프라와 데이터베이스가 준비되어 있어야 합니다.
+
+```bash
+# 1. 인프라 실행 (Nextcloud + PostgreSQL/pgvector)
+docker compose -f infra/docker-compose.yml up -d
+
+# 2. 데이터베이스 초기화 + 시드 데이터
+npx prisma db push --schema=prisma/schema.prisma --config=prisma/prisma.config.ts
+npx tsx prisma/seed.ts
+
+# 3. E2E 테스트 실행 (backend 빌드 → 서버 시작 → 테스트)
+npx nx e2e backend-e2e
+```
+
 ## 테스트 시나리오
 
 ```bash

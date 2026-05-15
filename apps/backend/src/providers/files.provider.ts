@@ -1,6 +1,7 @@
 import { Document } from '../../../../prisma/generated/client'
 import { prisma } from '../prisma'
 import { NextcloudProvider } from './nextcloud.provider'
+import { PdfWorkerProvider } from './pdf-worker.provider'
 
 export namespace FilesProvider {
   const toResponse = (doc: Document) => {
@@ -56,6 +57,10 @@ export namespace FilesProvider {
         fileSize: BigInt(file.size),
         indexStatus: 'PENDING',
       },
+    })
+
+    PdfWorkerProvider.processDocument(doc.documentId).catch((err) => {
+      console.error(`[PdfWorker] Failed to process document ${doc.documentId}:`, err)
     })
 
     return toResponse(doc)

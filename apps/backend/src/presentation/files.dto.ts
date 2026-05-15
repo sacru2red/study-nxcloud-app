@@ -12,7 +12,7 @@ export namespace FilesDto {
     ncPath: string | null;
     ncDownloadUrl: string | null;
     fileSize: number;
-    mimeType: string;
+    mimeType: string | null
     indexStatus: string;
     pageCount: number;
     chunkCount: number;

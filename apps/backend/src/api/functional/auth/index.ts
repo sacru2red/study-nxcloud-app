@@ -10,6 +10,8 @@ import type { Primitive } from "typia";
 
 import type { AuthDto } from "../../../presentation/auth.dto";
 
+export * as quota from "./quota/index";
+
 /**
  * @controller AuthController.login
  * @path POST /auth/login

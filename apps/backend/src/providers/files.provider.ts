@@ -1,8 +1,9 @@
+import { Document } from '../../../../prisma/generated/client';
 import { prisma } from '../prisma';
 import { NextcloudProvider } from './nextcloud.provider';
 
 export namespace FilesProvider {
-  const toResponse = (doc: any) => {
+  const toResponse = (doc: Document) => {
     const ncPath: string | null = doc.ncPath ?? null;
     let ncDownloadUrl: string | null = null;
     if (ncPath) {

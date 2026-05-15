@@ -1,3 +1,16 @@
 {
-  "singleQuote": true
+  "arrowParens": "always",
+  "trailingComma": "all",
+  "tabWidth": 2,
+  "semi": false,
+  "singleQuote": true,
+  "useTabs": false,
+  "printWidth": 100,
+  "bracketSpacing": true,
+  "bracketSameLine": false,
+  "endOfLine": "crlf",
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "tailwindAttributes": [
+    "class", "className", "ngClass", "class:list", "/[a-z-]+ClassName/"
+  ]
 }

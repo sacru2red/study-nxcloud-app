@@ -18,10 +18,9 @@ export class FilesController {
     @TypedFormData.Body(() => Multer()) body: FilesDto.IUploadBody,
   ): Promise<FilesDto.FileItem> {
     const file = body.file;
-    const buffer = Buffer.from(await file.arrayBuffer());
     return FilesProvider.uploadFile(user.tenantId, user.userId, {
       originalname: file.name,
-      buffer,
+      buffer: Buffer.from(await file.arrayBuffer()),
       mimetype: file.type,
       size: file.size,
     });

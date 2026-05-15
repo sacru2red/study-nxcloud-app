@@ -9,6 +9,8 @@ export namespace FilesDto {
     documentId: string & tags.Format<'uuid'>;
     tenantId: string & tags.Format<'uuid'>;
     fileName: string;
+    ncPath: string | null;
+    ncDownloadUrl: string | null;
     fileSize: number;
     mimeType: string;
     indexStatus: string;

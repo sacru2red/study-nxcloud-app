@@ -5,10 +5,14 @@ const ncUrl = process.env.NEXTCLOUD_URL || 'http://localhost:8080';
 const ncUser = process.env.NEXTCLOUD_ADMIN_USER || 'admin';
 const ncPass = process.env.NEXTCLOUD_ADMIN_PASS || 'admin123';
 
-const client: WebDAVClient = createClient(ncUrl, {
-  username: ncUser,
-  password: ncPass,
-});
+// WebDAV client: base URL includes user context so paths are relative
+const client: WebDAVClient = createClient(
+  `${ncUrl}/remote.php/dav/files/${ncUser}`,
+  {
+    username: ncUser,
+    password: ncPass,
+  },
+);
 
 export namespace NextcloudProvider {
   export const uploadFile = async (
@@ -17,11 +21,12 @@ export namespace NextcloudProvider {
     buffer: Buffer,
     mimeType: string,
   ) => {
-    const dirPath = `/files/${ncUser}/${tenantId}`;
+    const dirPath = `/${tenantId}`;
     const filePath = `${dirPath}/${fileName}`;
 
     try {
       await client.createDirectory(dirPath);
+    // eslint-disable-next-line no-empty
     } catch {}
 
     await client.putFileContents(filePath, buffer, {
@@ -29,9 +34,12 @@ export namespace NextcloudProvider {
       headers: { 'Content-Type': mimeType },
     });
 
+    // ncPath stored as absolute path for later reference
+    const ncPath = `/files/${ncUser}/${tenantId}/${fileName}`;
+
     return {
       ncFileId: `${tenantId}/${fileName}`,
-      ncPath: filePath,
+      ncPath,
       fileName,
       fileSize: buffer.length,
       mimeType,
@@ -39,7 +47,7 @@ export namespace NextcloudProvider {
   };
 
   export const listFiles = async (tenantId: string) => {
-    const dirPath = `/files/${ncUser}/${tenantId}`;
+    const dirPath = `/${tenantId}`;
     try {
       const items = await client.getDirectoryContents(dirPath);
       return items.map((item: FileStat) => ({
@@ -55,7 +63,7 @@ export namespace NextcloudProvider {
   };
 
   export const getFile = async (tenantId: string, fileName: string) => {
-    const filePath = `/files/${ncUser}/${tenantId}/${fileName}`;
+    const filePath = `/${tenantId}/${fileName}`;
     const data = await client.getFileContents(filePath);
     return Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer);
   };

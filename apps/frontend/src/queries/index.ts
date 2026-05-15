@@ -32,6 +32,8 @@ export interface DocumentResponse {
   documentId: string;
   tenantId: string;
   fileName: string;
+  ncPath: string | null;
+  ncDownloadUrl: string | null;
   fileSize: number;
   mimeType: string | null;
   indexStatus: string;
@@ -92,6 +94,21 @@ export interface UserUsage {
   usagePercent: number;
 }
 
+export function useQuota(enabled: boolean) {
+  return useQuery({
+    queryKey: ['quota'],
+    queryFn: () =>
+      client
+        .get<{
+          usedBytes: number;
+          quotaBytes: number;
+          usagePercent: number;
+        }>('/auth/quota')
+        .then((r) => r.data),
+    enabled,
+  });
+}
+
 export function useUsersUsage(tenantId: string | undefined) {
   return useQuery({
     queryKey: ['users-usage', tenantId],
@@ -103,5 +120,28 @@ export function useUsersUsage(tenantId: string | undefined) {
         }>(`/admin/tenants/${tenantId}/users-usage`)
         .then((r) => r.data),
     enabled: !!tenantId,
+  });
+}
+
+export interface IndexStatusResponse {
+  documentId: string;
+  status: string;
+  pageCount: number;
+  chunkCount: number;
+}
+
+export function useIndexStatus(fileId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['index-status', fileId],
+    queryFn: () =>
+      client
+        .get<IndexStatusResponse>(`/files/${fileId}/index-status`)
+        .then((r) => r.data),
+    enabled: !!fileId && enabled,
+    refetchInterval: (query) =>
+      query.state.data?.status === 'COMPLETED' ||
+      query.state.data?.status === 'FAILED'
+        ? false
+        : 5000,
   });
 }

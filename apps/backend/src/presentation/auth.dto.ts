@@ -16,6 +16,12 @@ export namespace AuthDto {
       role: 'admin' | 'user';
     };
   }
+
+  export interface QuotaResponse {
+    usedBytes: number;
+    quotaBytes: number;
+    usagePercent: number;
+  }
 }
 
 export type { IJwtPayload };

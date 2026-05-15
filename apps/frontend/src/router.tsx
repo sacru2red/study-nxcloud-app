@@ -6,6 +6,8 @@ import {
 } from '@tanstack/react-router';
 import { useAtom } from 'jotai';
 import { userAtom, logoutAtom } from './stores/auth';
+import { useQuota } from './queries';
+import { StorageIndicator } from './components/storage-indicator';
 import { LoginPage } from './pages/login-page';
 import { MainPage } from './pages/main-page';
 import { AdminPage } from './pages/admin-page';
@@ -13,11 +15,19 @@ import { AdminPage } from './pages/admin-page';
 function AppHeader() {
   const [user] = useAtom(userAtom);
   const [, doLogout] = useAtom(logoutAtom);
+  const { data: quota } = useQuota(!!user);
+
   if (!user) return null;
   return (
     <header className="flex items-center justify-between border-b px-6 py-3">
       <h1 className="text-lg font-bold">Document AI Chat</h1>
       <div className="flex items-center gap-4 text-sm text-gray-600">
+        {quota && (
+          <StorageIndicator
+            usedBytes={quota.usedBytes}
+            quotaBytes={quota.quotaBytes}
+          />
+        )}
         <span>{user.email}</span>
         <span className="rounded bg-gray-100 px-2 py-0.5 text-xs">
           {user.role}

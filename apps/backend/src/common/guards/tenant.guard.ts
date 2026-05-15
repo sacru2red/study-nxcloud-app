@@ -18,7 +18,10 @@ export class TenantGuard implements CanActivate {
       return true;
     }
 
-    if (user.tenantId !== tenantId) {
+    const isUuid = /^[0-9a-f-]{36}$/i.test(tenantId);
+    const expected = isUuid ? user.tenantId : user.ncGroupId;
+
+    if (expected !== tenantId) {
       throw new ForbiddenException(
         'You do not have access to this tenant resources',
       );

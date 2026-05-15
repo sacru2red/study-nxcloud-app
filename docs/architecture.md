@@ -179,7 +179,7 @@ tenants (tenant_id PK)
 | Database     | PostgreSQL 16 + pgvector          |
 | File Storage | Nextcloud (WebDAV + OCS API)      |
 | Embedding    | Gemini text-embedding-004 (768d)  |
-| LLM          | opencode zen / OpenRouter         |
+| LLM          | opencode zen                      |
 | Auth         | JWT (bcrypt + @nestjs/jwt)        |
 | State        | jotai + @tanstack/react-query     |
 | Router       | @tanstack/react-router            |

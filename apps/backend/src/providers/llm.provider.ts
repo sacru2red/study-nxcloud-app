@@ -16,7 +16,7 @@ export namespace LlmProvider {
       : question
 
     const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
+      'https://opencode.ai/zen/v1/chat/completions',
       {
         model,
         messages: [

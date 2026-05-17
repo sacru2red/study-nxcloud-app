@@ -2,13 +2,22 @@
 const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin')
 const { join, resolve } = require('path')
 
-module.exports = {
+
+/**
+ * @type {import('webpack').Configuration}
+ */
+const config = {
   output: {
     path: join(__dirname, '../../dist/apps/backend'),
     clean: true,
     ...(process.env.NODE_ENV !== 'production' && {
       devtoolModuleFilenameTemplate: '[absolute-resource-path]',
     }),
+  },
+  resolve: {
+    alias: {
+      "prisma-client": resolve(__dirname, '../../prisma/generated'),
+    }
   },
   plugins: [
     new NxAppWebpackPlugin({
@@ -32,19 +41,21 @@ module.exports = {
     // Prisma 7.x generated client has package.json exports/imports that are incompatible
     // with webpack enhanced-resolve. Mark prisma/generated as external to skip bundling.
     // Node.js runtime will resolve it via require() at runtime.
-    {
-      apply(compiler) {
-        const originalExternals = compiler.options.externals;
-        compiler.options.externals = [
-          ...(Array.isArray(originalExternals) ? originalExternals : originalExternals ? [originalExternals] : []),
-          function({ request }, callback) {
-            if (request && request.includes('prisma/generated')) {
-              return callback(null, `commonjs ${request}`);
-            }
-            callback();
-          },
-        ];
-      },
-    },
+    // {
+    //   apply(compiler) {
+    //     const originalExternals = compiler.options.externals;
+    //     compiler.options.externals = [
+    //       ...(Array.isArray(originalExternals) ? originalExternals : originalExternals ? [originalExternals] : []),
+    //       function({ request }, callback) {
+    //         if (request && request.includes('prisma/generated')) {
+    //           return callback(null, `commonjs ${request}`);
+    //         }
+    //         callback();
+    //       },
+    //     ];
+    //   },
+    // },
   ],
 }
+
+module.exports = config

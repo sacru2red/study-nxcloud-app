@@ -1,7 +1,7 @@
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
-interface UserInfo {
+export interface UserInfo {
   userId: string
   email: string
   tenantId: string

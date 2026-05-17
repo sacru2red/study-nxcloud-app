@@ -1,156 +1,154 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { connection } from '../api/client';
-import { useSetAtom } from 'jotai';
-import { tokenAtom, userAtom } from '../stores/auth';
-import apiSdk from 'workspaceRoot/apps/backend/src/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import client from '../api/client'
+import type { UserInfo } from '../stores/auth'
+import { useSetAtom } from 'jotai'
+import { tokenAtom, userAtom } from '../stores/auth'
 
 interface LoginRequest {
-  email: string;
-  password: string;
+  email: string
+  password: string
+}
+
+interface LoginResponse {
+  accessToken: string
+  user: UserInfo
 }
 
 export function useLogin() {
-  const setToken = useSetAtom(tokenAtom);
-  const setUser = useSetAtom(userAtom);
+  const setToken = useSetAtom(tokenAtom)
+  const setUser = useSetAtom(userAtom)
 
   return useMutation({
-    mutationFn: (data: LoginRequest) => {
-      return apiSdk.functional.auth.login(
-        connection,
-        data,
-      );
-    },
+    mutationFn: (data: LoginRequest) =>
+      client.post<LoginResponse>('/auth/login', data).then((r) => r.data),
     onSuccess: (res) => {
-      setToken(res.accessToken);
-      setUser(res.user);
+      setToken(res.accessToken)
+      setUser(res.user)
     },
-  });
+  })
 }
 
 export interface DocumentResponse {
-  documentId: string;
-  tenantId: string;
-  folderId: string | null;
-  fileName: string;
-  ncPath: string | null;
-  ncDownloadUrl: string | null;
-  fileSize: number;
-  mimeType: string | null;
-  indexStatus: string;
-  pageCount: number;
-  chunkCount: number;
-  createdAt: string;
-  indexedAt: string | null;
+  documentId: string
+  tenantId: string
+  folderId: string | null
+  fileName: string
+  ncPath: string | null
+  ncDownloadUrl: string | null
+  fileSize: number
+  mimeType: string | null
+  indexStatus: string
+  pageCount: number
+  chunkCount: number
+  createdAt: string
+  indexedAt: string | null
 }
 
 export function useFiles(tenantId: string | undefined) {
   return useQuery({
-    queryKey: ['files', tenantId] as const,
-    queryFn: async (ctx) => {
-      const [, tenantIdFromQuery] = ctx.queryKey;
-      if (!tenantIdFromQuery) {
-        throw new Error('Tenant ID is required');
-      }
-
-      return apiSdk.functional.tenants.files.list(
-        connection,
-        tenantIdFromQuery,
-      );
-    },
+    queryKey: ['files', tenantId],
+    queryFn: () => client.get<DocumentResponse[]>(`/tenants/${tenantId}/files`).then((r) => r.data),
     enabled: !!tenantId,
-  });
+  })
 }
 
 export function useUploadFile(tenantId: string | undefined) {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (file: File) => {
-      if (!tenantId) {
-        throw new Error('Tenant ID is required');
-      }
-
-      return apiSdk.functional.tenants.files.upload(
-        connection,
-        tenantId,
-        { file },
-      );
+      const form = new FormData()
+      form.append('file', file)
+      return client.post<DocumentResponse>(`/tenants/${tenantId}/files`, form).then((r) => r.data)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['files', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['files', tenantId] })
     },
-  });
+  })
 }
 
 export function useChat(fileId: string) {
   return useMutation({
     mutationFn: (question: string) =>
-      apiSdk.functional.files.chat(
-        connection,
-        fileId,
-        { question },
-      ),
-  });
+      client
+        .post<{
+          answer: string
+          sources: any[]
+          sessionId: string
+        }>(`/files/${fileId}/chat`, { question })
+        .then((r) => r.data),
+  })
 }
 
 export function useFolderChat(folderId: string) {
   return useMutation({
     mutationFn: (question: string) =>
-      apiSdk.functional.folders.chat(
-        connection,
-        folderId,
-        { question },
-      ),
-  });
+      client
+        .post<{
+          answer: string
+          sources: any[]
+          sessionId: string | null
+          documentCount: number
+        }>(`/folders/${folderId}/chat`, { question })
+        .then((r) => r.data),
+  })
+}
+
+export interface UserUsage {
+  userId: string
+  email: string
+  ncUserId: string
+  role: string
+  usedBytes: number
+  quotaBytes: number
+  usagePercent: number
 }
 
 export function useQuota(enabled: boolean) {
   return useQuery({
     queryKey: ['quota'],
     queryFn: () =>
-      apiSdk.functional.auth.quota.getQuota(
-        connection,
-      ),
+      client
+        .get<{
+          usedBytes: number
+          quotaBytes: number
+          usagePercent: number
+        }>('/auth/quota')
+        .then((r) => r.data),
     enabled,
-  });
+  })
 }
 
 export function useUsersUsage(tenantId: string | undefined) {
   return useQuery({
     queryKey: ['users-usage', tenantId],
-    queryFn: () => {
-      if (!tenantId) {
-        throw new Error('Tenant ID is required');
-      }
-
-      return apiSdk.functional.admin.tenants.users_usage.getUsersUsage(
-        connection,
-        tenantId,
-      );
-    },
+    queryFn: () =>
+      client
+        .get<{
+          tenantId: string
+          users: UserUsage[]
+        }>(`/admin/tenants/${tenantId}/users-usage`)
+        .then((r) => r.data),
     enabled: !!tenantId,
-  });
+  })
 }
 
 export interface IndexStatusResponse {
-  documentId: string;
-  status: string;
-  pageCount: number;
-  chunkCount: number;
+  documentId: string
+  status: string
+  pageCount: number
+  chunkCount: number
 }
 
 export function useIndexStatus(fileId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['index-status', fileId],
     queryFn: () =>
-      apiSdk.functional.files.index_status.indexStatus(
-        connection,
-        fileId!,
-      ),
+      client.get<IndexStatusResponse>(`/files/${fileId}/index-status`).then((r) => r.data),
     enabled: !!fileId && enabled,
     refetchInterval: (query) =>
       query.state.data?.status === 'COMPLETED' || query.state.data?.status === 'FAILED'
         ? false
         : 5000,
-  });
+  })
 }

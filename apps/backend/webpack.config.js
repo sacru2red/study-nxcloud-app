@@ -10,14 +10,6 @@ module.exports = {
       devtoolModuleFilenameTemplate: '[absolute-resource-path]',
     }),
   },
-  resolve: {
-    // Prisma 7.x generated client의 package.json exports/imports 필드가
-    // webpack enhanced-resolve와 호환되지 않아 "Can't resolve './module'" 에러 발생.
-    // exportsFields/importsFields를 비워두어 webpack이 package.json exports 필드를
-    // 무시하고 classic Node.js 모듈 해석을 사용하도록 강제한다.
-    exportsFields: [],
-    importsFields: [],
-  },
   plugins: [
     new NxAppWebpackPlugin({
       target: 'node',
@@ -37,5 +29,22 @@ module.exports = {
       // nestia does NOT work via Nx's transformers option (per nestia docs), only via ts-patch.
       transformers: [{ name: resolve(__dirname, '../../tools/noop-transformer') }],
     }),
+    // Prisma 7.x generated client has package.json exports/imports that are incompatible
+    // with webpack enhanced-resolve. Mark prisma/generated as external to skip bundling.
+    // Node.js runtime will resolve it via require() at runtime.
+    {
+      apply(compiler) {
+        const originalExternals = compiler.options.externals;
+        compiler.options.externals = [
+          ...(Array.isArray(originalExternals) ? originalExternals : originalExternals ? [originalExternals] : []),
+          function({ request }, callback) {
+            if (request && request.includes('prisma/generated')) {
+              return callback(null, `commonjs ${request}`);
+            }
+            callback();
+          },
+        ];
+      },
+    },
   ],
 }

@@ -8,7 +8,7 @@ export namespace FilesProvider {
     const ncPath: string | null = doc.ncPath ?? null
     let ncDownloadUrl: string | null = null
     if (ncPath) {
-      const ncUrl = process.env.NEXTCLOUD_URL || 'http://localhost:8080'
+      const ncUrl = process.env.NEXTCLOUD_URL || 'http://localhost:8081'
       const ncUser = process.env.NEXTCLOUD_ADMIN_USER || 'admin'
       const relativePath = ncPath.replace(/^\/files\/[^/]+\//, '')
       ncDownloadUrl = `${ncUrl}/remote.php/dav/files/${ncUser}/${relativePath}`

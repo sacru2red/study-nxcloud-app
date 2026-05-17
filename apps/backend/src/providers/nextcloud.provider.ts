@@ -1,7 +1,7 @@
 import { createClient, type FileStat, type WebDAVClient } from 'webdav'
 import axios from 'axios'
 
-const ncUrl = process.env.NEXTCLOUD_URL || 'http://localhost:8080'
+const ncUrl = process.env.NEXTCLOUD_URL || 'http://localhost:8081'
 const ncUser = process.env.NEXTCLOUD_ADMIN_USER || 'admin'
 const ncPass = process.env.NEXTCLOUD_ADMIN_PASS || 'admin123'
 

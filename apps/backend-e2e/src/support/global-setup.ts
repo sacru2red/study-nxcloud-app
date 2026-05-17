@@ -12,5 +12,5 @@ module.exports = async function () {
   await waitForPortOpen(port, { host })
 
   // Hint: Use `globalThis` to pass variables to global teardown.
-  globalThis.__TEARDOWN_MESSAGE__ = '\nTearing down...\n'
+  (globalThis as unknown as Record<string, string>).__TEARDOWN_MESSAGE__ = '\nTearing down...\n'
 }

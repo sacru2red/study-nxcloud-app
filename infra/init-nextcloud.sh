@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-NC_URL="${NEXTCLOUD_URL:-http://localhost:8080}"
+NC_URL="${NEXTCLOUD_URL:-http://localhost:8081}"
 NC_USER="${NEXTCLOUD_ADMIN_USER:-admin}"
 NC_PASS="${NEXTCLOUD_ADMIN_PASS:-admin123}"
 

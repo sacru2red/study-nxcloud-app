@@ -90,10 +90,21 @@ npx nx run-many -t serve -p backend frontend
 
 ## E2E 테스트 실행
 
+### Backend API (Jest)
+
 ```bash
 npx nx run backend:prepare-e2e
 npx nx e2e backend-e2e
 ```
+
+### Frontend (Playwright)
+
+```bash
+npx nx run backend:prepare-e2e
+npx nx e2e frontend-e2e
+```
+
+Playwright가 `backend:build` 후 `node dist/apps/backend/main.js`(3000)와 `npx vite`(4200, `/api` 프록시)를 자동으로 띄웁니다. 로컬에서 이미 서버가 떠 있으면 재사용합니다(`CI`가 설정되면 매번 새로 기동).
 
 `prepare-e2e`는 Docker(Postgres + Nextcloud), DB push, seed를 실행합니다. `.env`에 API 키가 설정되어 있어야 합니다.
 

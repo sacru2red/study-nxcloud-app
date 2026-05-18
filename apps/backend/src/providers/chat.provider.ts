@@ -60,6 +60,7 @@ export namespace ChatProvider {
        FROM document_chunks dc
        JOIN documents d ON dc.document_id = d.document_id
        WHERE dc.tenant_id = $2 AND dc.document_id = $3
+         AND dc.embedding IS NOT NULL
        ORDER BY dc.embedding <=> $1::vector
        LIMIT 5`,
       vectorStr,
@@ -83,7 +84,12 @@ export namespace ChatProvider {
       sources = []
     } else {
       const context = relevantResults.map((r) => r.chunk_text).join('\n\n')
-      answer = await LlmProvider.chat(question, context)
+      try {
+        answer = await LlmProvider.chat(question, context)
+      } catch {
+        answer = '문서에서 확인 불가'
+        relevantResults.length = 0
+      }
       sources = relevantResults.map((r) => ({
         fileName: r.file_name,
         pageNo: r.page_no,

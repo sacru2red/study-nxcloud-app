@@ -68,6 +68,18 @@
         "command": "npx nestia sdk --project tsconfig.app.json",
         "cwd": "apps/backend"
       }
+    },
+    "prepare-e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "commands": [
+          "docker compose -f infra/docker-compose.yml up -d",
+          "npx prisma db push --schema=prisma/schema.prisma --config=prisma/prisma.config.ts",
+          "npx tsx prisma/seed.ts"
+        ],
+        "parallel": false
+      }
     }
   }
 }

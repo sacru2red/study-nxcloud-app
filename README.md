@@ -90,19 +90,12 @@ npx nx run-many -t serve -p backend frontend
 
 ## E2E 테스트 실행
 
-`backend-e2e` global-setup이 Docker( Postgres + Nextcloud ), DB push, seed를 자동 실행합니다. `.env`에 API 키가 설정되어 있어야 합니다.
-
 ```bash
+npx nx run backend:prepare-e2e
 npx nx e2e backend-e2e
 ```
 
-수동으로 인프라만 먼저 올리려면:
-
-```bash
-docker compose -f infra/docker-compose.yml up -d
-npx prisma db push --schema=prisma/schema.prisma --config=prisma/prisma.config.ts
-npx tsx prisma/seed.ts
-```
+`prepare-e2e`는 Docker(Postgres + Nextcloud), DB push, seed를 실행합니다. `.env`에 API 키가 설정되어 있어야 합니다.
 
 ## 테스트 시나리오
 

@@ -65,11 +65,29 @@ export namespace PdfWorkerProvider {
   }
 }
 
+const extractTextFromPdfContentStream = (buffer: Buffer) => {
+  const raw = buffer.toString('latin1')
+  const parts: string[] = []
+  const pattern = /\(([^()\\]*(?:\\.[^()\\]*)*)\)\s*Tj/g
+  let match = pattern.exec(raw)
+  while (match) {
+    parts.push(match[1].replace(/\\([\\()])/g, '$1'))
+    match = pattern.exec(raw)
+  }
+  return parts.join(' ').trim()
+}
+
 const extractPages = async (buffer: Buffer) => {
-  const data = await pdf(buffer)
-  if (data.numpages <= 1) return [{ pageNo: 1, text: data.text }]
-  const pageTexts = data.text.split('\f').filter(Boolean)
-  return pageTexts.map((text, i) => ({ pageNo: i + 1, text: text.trim() }))
+  try {
+    const data = await pdf(buffer)
+    if (data.numpages <= 1) return [{ pageNo: 1, text: data.text }]
+    const pageTexts = data.text.split('\f').filter(Boolean)
+    return pageTexts.map((text, i) => ({ pageNo: i + 1, text: text.trim() }))
+  } catch {
+    const text = extractTextFromPdfContentStream(buffer)
+    if (!text) throw new Error('Failed to extract text from PDF')
+    return [{ pageNo: 1, text }]
+  }
 }
 
 const chunkPages = (pages: Array<{ pageNo: number; text: string }>) => {

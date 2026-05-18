@@ -1,11 +1,74 @@
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import axios from 'axios'
 import FormData from 'form-data'
 
-const e2eTestPdf = readFileSync(
-  join(__dirname, '../fixtures/e2e-test-document.pdf'),
-)
+// ─── Minimal PDF Generator ────────────────────────────────────────────────
+// Generates a valid minimal PDF with extractable text content for RAG testing.
+function createTestPdf(): Buffer {
+  // Minimal valid PDF 1.0 with one page of text content.
+  // pdf-parse (pdf.js) requires properly structured xref/trailer.
+  const textContent =
+    'Document AI Chat System This system allows users to upload PDF documents and ask questions about their content. ' +
+    'It uses RAG technology to find relevant information and generate accurate answers. ' +
+    'The system supports multi-tenant environments with complete data isolation between tenants. ' +
+    'Documents are stored in Nextcloud and processed using AI embeddings stored in pgvector.'
+
+  // Build content stream (no parens in text to avoid PDF string escaping issues)
+  const stream = `BT /F1 12 Tf 72 720 Td (${textContent}) Tj ET`
+
+  // Build each object as raw bytes so offset tracking is exact
+  const header = Buffer.from('%PDF-1.0\n', 'binary')
+
+  const obj1 = Buffer.from(
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+    'binary',
+  )
+  const obj2 = Buffer.from(
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    'binary',
+  )
+  const obj3 = Buffer.from(
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n`,
+    'binary',
+  )
+  const obj4 = Buffer.from(
+    `4 0 obj\n<< /Length ${Buffer.byteLength(stream, 'binary')} >>\nstream\n${stream}\nendstream\nendobj\n`,
+    'binary',
+  )
+  const obj5 = Buffer.from(
+    '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    'binary',
+  )
+
+  const offsets = [
+    -1, // placeholder for entry 0 (free entry)
+    header.length,
+    header.length + obj1.length,
+    header.length + obj1.length + obj2.length,
+    header.length + obj1.length + obj2.length + obj3.length,
+    header.length + obj1.length + obj2.length + obj3.length + obj4.length,
+  ]
+
+  const body = Buffer.concat([obj1, obj2, obj3, obj4, obj5])
+  const xrefOffset = header.length + body.length
+
+  const xref =
+    `xref\n0 6\n` +
+    `0000000000 65535 f \n` +
+    offsets
+      .slice(1)
+      .map((o) => String(o).padStart(10, '0') + ' 00000 n ')
+      .join('\n') + '\n'
+
+  const trailer =
+    `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`
+
+  return Buffer.concat([
+    header,
+    body,
+    Buffer.from(xref, 'binary'),
+    Buffer.from(trailer, 'binary'),
+  ])
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -87,7 +150,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
 
   // ── Test 3: PDF 업로드 → PENDING 상태 확인 ──────────────────────────────
   it('3. should upload a PDF file and return document with PENDING status', async () => {
-    const pdfBuffer = e2eTestPdf
+    const pdfBuffer = createTestPdf()
     const form = new FormData()
     form.append('file', pdfBuffer, {
       filename: 'e2e-test-document.pdf',
@@ -145,10 +208,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
   it('6. should answer a document-related question with sources', async () => {
     const res = await axios.post(
       `/api/files/${fileId}/chat`,
-      {
-        question:
-          'What is the title of the paper about dynamic languages and JIT specialization?',
-      },
+      { question: 'What technology does this system use to answer questions?' },
       { headers: { Authorization: `Bearer ${tokenA}` } },
     )
 

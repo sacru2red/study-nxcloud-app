@@ -95,5 +95,8 @@
   },
   "scripts": {
     "prepare": "ts-patch install && nx run prisma-client:generate"
+  },
+  "volta": {
+    "node": "24.15.0"
   }
 }

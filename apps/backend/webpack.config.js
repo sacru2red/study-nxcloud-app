@@ -1,39 +1,39 @@
 // @ts-check
 const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin')
-const { join, resolve } = require('path')
+const { join, relative, resolve } = require('path')
+
+const outputDir = join(__dirname, '../../dist/apps/backend')
+/** dist/main.js 기준 상대 경로 — node_modules 링크 없이 generated 클라이언트 로드 */
+const prismaClientExternal = relative(
+  outputDir,
+  resolve(__dirname, '../../prisma/generated/index.js'),
+).replace(/\\/g, '/')
 
 /**
  * @type {import('webpack').Configuration}
  */
-const prismaGenerated = resolve(__dirname, '../../prisma/generated')
-
 const config = {
   output: {
-    path: join(__dirname, '../../dist/apps/backend'),
+    path: outputDir,
     clean: true,
     ...(process.env.NODE_ENV !== 'production' && {
       devtoolModuleFilenameTemplate: '[absolute-resource-path]',
     }),
   },
   resolve: {
-    // Node target: avoid package.json "browser" → default.js (uses #imports webpack can't resolve)
-    mainFields: ['module', 'main'],
-    conditionNames: ['node', 'require', 'import', 'default'],
-    importsFields: ['imports'],
     alias: {
-      'prisma-client': join(prismaGenerated, 'index.js'),
-      '#main-entry-point': join(prismaGenerated, 'index.js'),
-      '#wasm-compiler-loader': join(prismaGenerated, 'wasm-worker-loader.mjs'),
+      'prisma-client': resolve(__dirname, '../../prisma/generated/index.js'),
     },
   },
-  module: {
-    rules: [
-      {
-        test: /\.wasm$/,
-        type: 'asset/resource',
-      },
-    ],
-  },
+  externals: [
+    ({ request }, callback) => {
+      if (request === 'prisma-client') {
+        callback(null, `commonjs ${prismaClientExternal}`)
+        return
+      }
+      callback()
+    },
+  ],
   plugins: [
     new NxAppWebpackPlugin({
       target: 'node',
@@ -46,6 +46,7 @@ const config = {
       generatePackageJson: true,
       sourceMap: true,
       useTsconfigPaths: false,
+      mergeExternals: true,
       // noop-transformer is required to force `transpileOnly: false` in Nx's compiler-loaders.js.
       // Without this, Nx sets transpileOnly=true which bypasses ts-patch, and nestia/typia
       // transformers configured in tsconfig.app.json plugins won't run.
@@ -54,30 +55,6 @@ const config = {
       // nestia does NOT work via Nx's transformers option (per nestia docs), only via ts-patch.
       transformers: [{ name: resolve(__dirname, '../../tools/noop-transformer') }],
     }),
-    // Nx source-map-loader breaks Prisma generated CJS (resolves phantom './module').
-    {
-      apply(compiler) {
-        compiler.hooks.afterEnvironment.tap('PrismaBundleFix', () => {
-          const rules = compiler.options.module.rules
-          for (const rule of rules) {
-            if (
-              rule &&
-              typeof rule === 'object' &&
-              rule.loader &&
-              String(rule.loader).includes('source-map-loader')
-            ) {
-              rule.exclude = [].concat(rule.exclude ?? [], prismaGenerated)
-            }
-          }
-          compiler.options.module.rules.unshift({
-            test: /\.js$/,
-            include: prismaGenerated,
-            type: 'javascript/auto',
-            parser: { commonjs: true },
-          })
-        })
-      },
-    },
   ],
 }
 

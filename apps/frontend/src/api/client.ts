@@ -3,7 +3,8 @@ import axios from 'axios'
 const client = axios.create({ baseURL: '/api' })
 
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken')
+  const raw = localStorage.getItem('accessToken')
+  const token = raw ? JSON.parse(raw) : null
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

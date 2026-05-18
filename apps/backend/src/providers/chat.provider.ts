@@ -26,7 +26,25 @@ export namespace ChatProvider {
       })
     }
 
-    const questionVector = await EmbeddingProvider.generateEmbedding(question)
+    let questionVector: number[]
+    try {
+      questionVector = await EmbeddingProvider.generateEmbedding(question)
+    } catch {
+      const answer = '문서에서 확인 불가'
+      await prisma.chatMessage.createMany({
+        data: [
+          { sessionId: session.sessionId, role: 'user', message: question },
+          {
+            sessionId: session.sessionId,
+            role: 'assistant',
+            message: answer,
+            sourcesJson: '[]',
+          },
+        ],
+      })
+      return { answer, sources: [], sessionId: session.sessionId }
+    }
+
     const vectorStr = `[${questionVector.join(',')}]`
 
     const results: Array<{
@@ -52,7 +70,13 @@ export namespace ChatProvider {
     const relevantResults = results.filter((r) => r.similarity >= SIMILARITY_THRESHOLD)
 
     let answer: string
-    let sources: any[]
+    let sources: Array<{
+      fileName: string
+      pageNo: number
+      paragraphNo: number
+      text: string
+      similarity: number
+    }>
 
     if (relevantResults.length === 0) {
       answer = '문서에서 확인 불가'

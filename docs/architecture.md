@@ -95,7 +95,7 @@ tenants (tenant_id PK)
     │
     ▼
 [1] EmbeddingService.generateEmbedding(question)
-    │ → Gemini text-embedding-004 API
+    │ → Gemini gemini-embedding-001 API (768d)
     │ → 768차원 벡터
     ▼
 [2] pgvector 유사도 검색
@@ -178,7 +178,7 @@ tenants (tenant_id PK)
 | Frontend     | React 19 + Vite 8 + TailwindCSS 3 |
 | Database     | PostgreSQL 16 + pgvector          |
 | File Storage | Nextcloud (WebDAV + OCS API)      |
-| Embedding    | Gemini text-embedding-004 (768d)  |
+| Embedding    | Gemini gemini-embedding-001 (768d) |
 | LLM          | opencode zen                      |
 | Auth         | JWT (bcrypt + @nestjs/jwt)        |
 | State        | jotai + @tanstack/react-query     |

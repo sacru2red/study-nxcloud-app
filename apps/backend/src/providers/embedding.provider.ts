@@ -34,6 +34,7 @@ export namespace EmbeddingProvider {
             vectorStr,
             chunk.chunkId,
           )
+        // eslint-disable-next-line no-empty
         } catch {}
       }
       if (i + batchSize < chunks.length) {

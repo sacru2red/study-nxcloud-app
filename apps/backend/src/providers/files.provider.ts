@@ -1,4 +1,4 @@
-import { Document } from '../../../../prisma/generated/client'
+import type { Document } from 'prisma-client'
 import { prisma } from '../prisma'
 import { NextcloudProvider } from './nextcloud.provider'
 import { PdfWorkerProvider } from './pdf-worker.provider'

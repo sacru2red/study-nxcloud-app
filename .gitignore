@@ -12,3 +12,9 @@ dist
 apps/backend/src/api
 
 generated
+
+# Playwright
+.playwright-mcp/
+dist/.playwright/
+test-results/
+playwright-report/

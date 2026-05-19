@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin'
 import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin'
 
-export default defineConfig(() => ({
+export default defineConfig(({ mode }) => ({
   root: import.meta.dirname,
   cacheDir: '../../node_modules/.vite/apps/frontend',
   server: {
@@ -28,6 +28,9 @@ export default defineConfig(() => ({
     },
   },
   plugins: [react(), nxViteTsPaths(), nxCopyAssetsPlugin(['*.md'])],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? mode),
+  },
   // Uncomment this if you are using workers.
   // worker: {
   //   plugins: () => [ nxViteTsPaths() ],

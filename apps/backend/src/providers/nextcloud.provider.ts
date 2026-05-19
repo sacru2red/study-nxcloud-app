@@ -72,6 +72,7 @@ export namespace NextcloudProvider {
         headers: { 'OCS-APIRequest': 'true' },
       })
       const quota = response.data?.ocs?.data?.quota
+      console.log('quota', quota)
       if (!quota) return { used: 0, available: 0, total: 0, relative: 0 }
       return {
         used: Number(quota.used) || 0,

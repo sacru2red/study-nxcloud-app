@@ -196,6 +196,7 @@ tenants (tenant_id PK)
 | [RESULT_OUTLINE.md](./RESULT_OUTLINE.md) | 과제 요구사항 대비 구현·진행·제출 준비 현황 |
 | [docs/submission-tasks.md](./docs/submission-tasks.md) | 제출·시연 할 일과 방법 (대화 정리) |
 | [docs/development.md](./docs/development.md) | 로컬 환경 설정, 개발 서버, E2E 테스트 |
+| [docs/deploy-oracle-cloud.md](./docs/deploy-oracle-cloud.md) | Oracle Cloud 무료 VM 모놀리식 배포 (Docker Compose) |
 | [docs/api-examples.md](./docs/api-examples.md) | API 응답 예시 |
 | [docs/nestia-guide.md](./docs/nestia-guide.md) | Nestia 사용 가이드 |
 

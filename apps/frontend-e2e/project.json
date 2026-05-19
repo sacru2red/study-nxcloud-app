@@ -9,6 +9,14 @@
   "targets": {
     "e2e": {
       "dependsOn": [{ "projects": "backend", "target": "build" }]
+    },
+    "capture-demo": {
+      "command": "npx playwright test --project=demo-capture",
+      "options": {
+        "cwd": "apps/frontend-e2e"
+      },
+      "dependsOn": [{ "projects": "backend", "target": "build" }],
+      "inputs": ["default", "^default", "{projectRoot}/**/*.ts"]
     }
   }
 }

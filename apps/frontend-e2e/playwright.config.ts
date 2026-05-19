@@ -9,6 +9,7 @@ const reuseExistingServer = !process.env['CI']
 export default defineConfig({
   ...nxE2EPreset(__filename, { testDir: './src' }),
   globalSetup: require.resolve('./src/global-setup.ts'),
+  outputDir: join(workspaceRoot, 'test-results'),
   timeout: 60_000,
   expect: {
     timeout: 10_000,
@@ -37,6 +38,19 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /demo-capture\.spec\.ts/,
+    },
+    {
+      name: 'demo-capture',
+      testMatch: /demo-capture\.spec\.ts/,
+      timeout: 180_000,
+      use: {
+        video: 'on',
+        viewport: { width: 1440, height: 900 },
+        baseURL,
+        trace: 'on-first-retry',
+      },
+      retries: 0,
     },
   ],
 })

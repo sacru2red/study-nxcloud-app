@@ -18,3 +18,6 @@ generated
 dist/.playwright/
 test-results/
 playwright-report/
+
+# Demo screenshots (generated locally)
+docs/screenshots/*.png

@@ -87,6 +87,14 @@ Playwright가 `backend:build` 후 `node dist/apps/backend/main.js`(3000)와 `npx
 
 `prepare-e2e`는 Docker(Postgres + Nextcloud), DB push, seed를 실행합니다. `.env`에 API 키가 설정되어 있어야 합니다.
 
+### 데모 캡처 (스크린샷 자동 생성)
+
+`.tmp/demo-pdfs/`에 PDF를 배치한 후 아래 명령으로 `docs/screenshots/`에 스크린샷 01~06(선택 08)을 생성합니다. 자세한 내용은 [submission-tasks.md §3.2](./submission-tasks.md)를 참고하세요.
+
+```bash
+npx nx run frontend-e2e:capture-demo
+```
+
 ## 수동 API 테스트 시나리오
 
 ```bash
@@ -133,3 +141,4 @@ curl http://localhost:3000/api/tenants/tenant-b/files \
 - [README.md](../README.md#아키텍처) — 시스템 아키텍처
 - [api-examples.md](./api-examples.md) — API 응답 예시
 - [nestia-guide.md](./nestia-guide.md) — Nestia 사용 가이드
+- [submission-tasks.md](./submission-tasks.md) — 제출 준비 및 데모 캡처 자동화

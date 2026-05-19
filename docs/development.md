@@ -136,6 +136,10 @@ curl http://localhost:3000/api/tenants/tenant-b/files \
 
 응답 예시는 [api-examples.md](./api-examples.md)를 참고하세요.
 
+## 프로덕션 배포 (Oracle Cloud)
+
+모놀리식 Docker Compose 배포는 [deploy-oracle-cloud.md](./deploy-oracle-cloud.md)를 참고하세요.
+
 ## 관련 문서
 
 - [README.md](../README.md#아키텍처) — 시스템 아키텍처

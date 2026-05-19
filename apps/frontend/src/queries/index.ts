@@ -1,17 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import client from '../api/client'
-import type { UserInfo } from '../stores/auth'
+import { getConnection } from '../api/client'
 import { useSetAtom } from 'jotai'
 import { tokenAtom, userAtom } from '../stores/auth'
+import api from 'backend-sdk'
 
 interface LoginRequest {
   email: string
   password: string
-}
-
-interface LoginResponse {
-  accessToken: string
-  user: UserInfo
 }
 
 export function useLogin() {
@@ -19,8 +14,9 @@ export function useLogin() {
   const setUser = useSetAtom(userAtom)
 
   return useMutation({
-    mutationFn: (data: LoginRequest) =>
-      client.post<LoginResponse>('/auth/login', data).then((r) => r.data),
+    mutationFn: (data: LoginRequest) => {
+      return api.functional.auth.login(getConnection(), data)
+    },
     onSuccess: (res) => {
       setToken(res.accessToken)
       setUser(res.user)
@@ -28,26 +24,17 @@ export function useLogin() {
   })
 }
 
-export interface DocumentResponse {
-  documentId: string
-  tenantId: string
-  folderId: string | null
-  fileName: string
-  ncPath: string | null
-  ncDownloadUrl: string | null
-  fileSize: number
-  mimeType: string | null
-  indexStatus: string
-  pageCount: number
-  chunkCount: number
-  createdAt: string
-  indexedAt: string | null
-}
-
 export function useFiles(tenantId: string | undefined) {
   return useQuery({
-    queryKey: ['files', tenantId],
-    queryFn: () => client.get<DocumentResponse[]>(`/tenants/${tenantId}/files`).then((r) => r.data),
+    queryKey: ['files', tenantId] as const,
+    queryFn: async (ctx) => {
+      const [, tenantIdFromQuery] = ctx.queryKey
+      if (!tenantIdFromQuery) {
+        throw new Error('Tenant ID is required')
+      }
+
+      return api.functional.tenants.files.list(getConnection(), tenantIdFromQuery)
+    },
     enabled: !!tenantId,
   })
 }
@@ -57,9 +44,10 @@ export function useUploadFile(tenantId: string | undefined) {
 
   return useMutation({
     mutationFn: (file: File) => {
-      const form = new FormData()
-      form.append('file', file)
-      return client.post<DocumentResponse>(`/tenants/${tenantId}/files`, form).then((r) => r.data)
+      if (!tenantId) {
+        throw new Error('Tenant ID is required')
+      }
+      return api.functional.tenants.files.upload(getConnection(), tenantId, { file })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['files', tenantId] })
@@ -69,82 +57,57 @@ export function useUploadFile(tenantId: string | undefined) {
 
 export function useChat(fileId: string) {
   return useMutation({
-    mutationFn: (question: string) =>
-      client
-        .post<{
-          answer: string
-          sources: any[]
-          sessionId: string
-        }>(`/files/${fileId}/chat`, { question })
-        .then((r) => r.data),
+    mutationFn: (question: string) => {
+      return api.functional.files.chat(getConnection(), fileId, { question })
+    }
   })
 }
 
 export function useFolderChat(folderId: string) {
   return useMutation({
-    mutationFn: (question: string) =>
-      client
-        .post<{
-          answer: string
-          sources: any[]
-          sessionId: string | null
-          documentCount: number
-        }>(`/folders/${folderId}/chat`, { question })
-        .then((r) => r.data),
+    mutationFn: (question: string) => {
+      return api.functional.folders.chat(getConnection(), folderId, { question })
+    }
   })
-}
-
-export interface UserUsage {
-  userId: string
-  email: string
-  ncUserId: string
-  role: string
-  usedBytes: number
-  quotaBytes: number
-  usagePercent: number
 }
 
 export function useQuota(enabled: boolean) {
   return useQuery({
     queryKey: ['quota'],
-    queryFn: () =>
-      client
-        .get<{
-          usedBytes: number
-          quotaBytes: number
-          usagePercent: number
-        }>('/auth/quota')
-        .then((r) => r.data),
+    queryFn: () => {
+      return api.functional.auth.quota.getQuota(getConnection())
+    },
     enabled,
   })
 }
 
 export function useUsersUsage(tenantId: string | undefined) {
   return useQuery({
-    queryKey: ['users-usage', tenantId],
-    queryFn: () =>
-      client
-        .get<{
-          tenantId: string
-          users: UserUsage[]
-        }>(`/admin/tenants/${tenantId}/users-usage`)
-        .then((r) => r.data),
+    queryKey: ['users-usage', tenantId] as const,
+    queryFn: async (ctx) => {
+      const [, tenantIdFromQuery] = ctx.queryKey
+      if (!tenantIdFromQuery) {
+        throw new Error('Tenant ID is required')
+      }
+      return api.functional.admin.tenants.users_usage.getUsersUsage(
+        getConnection(),
+        tenantIdFromQuery,
+      )
+    },
     enabled: !!tenantId,
   })
 }
 
-export interface IndexStatusResponse {
-  documentId: string
-  status: string
-  pageCount: number
-  chunkCount: number
-}
-
 export function useIndexStatus(fileId: string | null, enabled: boolean) {
   return useQuery({
-    queryKey: ['index-status', fileId],
-    queryFn: () =>
-      client.get<IndexStatusResponse>(`/files/${fileId}/index-status`).then((r) => r.data),
+    queryKey: ['index-status', fileId] as const,
+    queryFn: async (ctx) => {
+      const [, fileIdFromQuery] = ctx.queryKey
+      if (!fileIdFromQuery) {
+        throw new Error('File ID is required')
+      }
+      return api.functional.files.index_status.indexStatus(getConnection(), fileIdFromQuery)
+    },
     enabled: !!fileId && enabled,
     refetchInterval: (query) =>
       query.state.data?.status === 'COMPLETED' || query.state.data?.status === 'FAILED'

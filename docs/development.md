@@ -38,7 +38,7 @@ cp .env.template .env
 ```bash
 # Prisma 마이그레이션
 npx prisma generate --schema=prisma/schema.prisma
-npx prisma db push --schema=prisma/schema.prisma
+npx prisma db push --schema=prisma/schema.prisma --config=prisma/prisma.config.ts
 
 # 시드 데이터 (2개 Tenant + 6명 사용자)
 npx tsx prisma/seed.ts

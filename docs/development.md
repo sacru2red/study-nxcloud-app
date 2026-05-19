@@ -30,7 +30,7 @@ cp .env.template .env
 `.env` 파일을 열고 다음 값들을 설정하세요:
 
 - `GEMINI_API_KEY`: Google AI Studio에서 발급
-- `OPENCODE_API_KEY`: opencode.ai에서 발급
+- `LLM_API_KEY`: opencode.ai에서 발급
 - `JWT_SECRET`: 임의의 문자열로 변경
 
 ### 3. 데이터베이스 초기화
@@ -97,11 +97,14 @@ Playwright가 `backend:build` 후 `node dist/apps/backend/main.js`(3000)와 `npx
 
 ### 데모 캡처 (스크린샷 자동 생성)
 
-`.tmp/demo-pdfs/`에 PDF를 배치한 후 아래 명령으로 `docs/screenshots/`에 스크린샷 01~06(선택 08)을 생성합니다. 자세한 내용은 [submission-tasks.md §3.2](./submission-tasks.md)를 참고하세요.
+`.tmp/demo-pdfs/`에 PDF를 배치한 후 아래 명령으로 `docs/screenshots/`에 스크린샷과 `docs/demo-capture.webm`을 갱신합니다.
 
 ```bash
 npx nx run frontend-e2e:capture-demo
+node tools/concat-demo-videos.js
 ```
+
+산출물은 README Demo 섹션에서 참조하며, 버전 관리 대상입니다.
 
 ## 수동 API 테스트 시나리오
 

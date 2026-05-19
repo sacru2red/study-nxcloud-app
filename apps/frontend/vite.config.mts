@@ -12,7 +12,7 @@ export default defineConfig(() => ({
     host: 'localhost',
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: `http://localhost:${process.env.BACKEND_PORT ?? 3000}`,
         changeOrigin: true,
       },
     },
@@ -22,7 +22,7 @@ export default defineConfig(() => ({
     host: 'localhost',
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: `http://localhost:${process.env.BACKEND_PORT ?? 3000}`,
         changeOrigin: true,
       },
     },

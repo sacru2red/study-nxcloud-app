@@ -6,12 +6,12 @@ export interface TestCredentials {
 }
 
 export const ADMIN_USER: TestCredentials = {
-  email: 'user-a1@datco.kr',
+  email: 'user-a1@example.com',
   password: 'password123',
 }
 
 export const REGULAR_USER: TestCredentials = {
-  email: 'user-a2@datco.kr',
+  email: 'user-a2@example.com',
   password: 'password123',
 }
 

@@ -7,7 +7,7 @@ POST /api/auth/login
 Content-Type: application/json
 
 {
-  "email": "user-a1@datco.kr",
+  "email": "user-a1@example.com",
   "password": "password123"
 }
 ```
@@ -19,7 +19,7 @@ Content-Type: application/json
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
     "userId": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user-a1@datco.kr",
+    "email": "user-a1@example.com",
     "tenantId": "660e8400-e29b-41d4-a716-446655440001",
     "role": "admin"
   }
@@ -226,7 +226,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
   "users": [
     {
       "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "email": "user-a1@datco.kr",
+      "email": "user-a1@example.com",
       "ncUserId": "user-a1",
       "role": "admin",
       "usedBytes": 52428800,
@@ -235,7 +235,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
     },
     {
       "userId": "aa0e8400-e29b-41d4-a716-446655440005",
-      "email": "user-a2@datco.kr",
+      "email": "user-a2@example.com",
       "ncUserId": "user-a2",
       "role": "user",
       "usedBytes": 10485760,

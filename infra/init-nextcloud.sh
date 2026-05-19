@@ -49,12 +49,12 @@ set_quota() {
 create_group "tenant-a"
 create_group "tenant-b"
 
-create_user "user-a1" "password123" "user-a1@datco.kr"
-create_user "user-a2" "password123" "user-a2@datco.kr"
-create_user "user-a3" "password123" "user-a3@datco.kr"
-create_user "user-b1" "password123" "user-b1@datco.kr"
-create_user "user-b2" "password123" "user-b2@datco.kr"
-create_user "user-b3" "password123" "user-b3@datco.kr"
+create_user "user-a1" "password123" "user-a1@example.com"
+create_user "user-a2" "password123" "user-a2@example.com"
+create_user "user-a3" "password123" "user-a3@example.com"
+create_user "user-b1" "password123" "user-b1@example.com"
+create_user "user-b2" "password123" "user-b2@example.com"
+create_user "user-b3" "password123" "user-b3@example.com"
 
 add_user_to_group "user-a1" "tenant-a"
 add_user_to_group "user-a2" "tenant-a"

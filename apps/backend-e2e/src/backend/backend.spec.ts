@@ -109,7 +109,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
   // ── Test 1: tenant-a 로그인 ──────────────────────────────────────────────
   it('1. should login as tenant-a admin and return access token + user info', async () => {
     const res = await axios.post('/api/auth/login', {
-      email: 'user-a1@datco.kr',
+      email: 'user-a1@example.com',
       password: 'password123',
     })
 
@@ -117,7 +117,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     expect(res.data.accessToken).toBeTruthy()
     expect(typeof res.data.accessToken).toBe('string')
     expect(res.data.user).toMatchObject({
-      email: 'user-a1@datco.kr',
+      email: 'user-a1@example.com',
       role: 'admin',
     })
 
@@ -129,7 +129,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
   it('2. should reject cross-tenant file access with 403 Forbidden', async () => {
     // First login as tenant-b user to confirm tenant-b auth works
     const loginB = await axios.post('/api/auth/login', {
-      email: 'user-b1@datco.kr',
+      email: 'user-b1@example.com',
       password: 'password123',
     })
     tokenB = loginB.data.accessToken
@@ -266,7 +266,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     let caught = false
     try {
       await axios.post('/api/auth/login', {
-        email: 'user-a1@datco.kr',
+        email: 'user-a1@example.com',
         password: 'wrong-password-1234',
       })
     } catch (err: unknown) {

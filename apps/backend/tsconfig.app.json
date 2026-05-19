@@ -1,9 +1,6 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "paths": {
-      "prisma-client": ["../../prisma/generated"]
-    },
     "outDir": "../../dist/out-tsc",
     "module": "commonjs",
     "moduleResolution": "node",

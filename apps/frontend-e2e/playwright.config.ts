@@ -4,7 +4,12 @@ import { nxE2EPreset } from '@nx/playwright/preset'
 import { workspaceRoot } from '@nx/devkit'
 
 const baseURL = process.env['BASE_URL'] || 'http://localhost:4200'
-const reuseExistingServer = !process.env['CI']
+const isDemoCaptureRun =
+  process.argv.includes('--project=demo-capture') ||
+  process.argv.some((arg) => arg.includes('demo-capture'))
+const mockEmbeddingsEnabled =
+  process.env['MOCK_EMBEDDINGS'] === 'true' || isDemoCaptureRun
+const reuseExistingServer = !process.env['CI'] && !mockEmbeddingsEnabled
 
 export default defineConfig({
   ...nxE2EPreset(__filename, { testDir: './src' }),
@@ -25,6 +30,10 @@ export default defineConfig({
       reuseExistingServer,
       cwd: workspaceRoot,
       timeout: 180_000,
+      env: {
+        ...process.env,
+        MOCK_EMBEDDINGS: mockEmbeddingsEnabled ? 'true' : '',
+      },
     },
     {
       command: 'npx vite',

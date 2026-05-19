@@ -65,14 +65,14 @@ nano .env   # 비밀번호, API 키, CORS_ORIGIN 수정
 
 ### `.env` 필수 항목
 
-| 변수 | 설명 |
-|------|------|
-| `POSTGRES_PASSWORD` | DB 비밀번호 |
-| `NEXTCLOUD_ADMIN_PASSWORD` | Nextcloud 관리자 |
-| `JWT_SECRET` | 임의의 긴 문자열 |
-| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/apikey) |
-| `OPENCODE_API_KEY` | [opencode.ai](https://opencode.ai/auth) |
-| `CORS_ORIGIN` | 브라우저 접속 URL (`http://<공인IP>`) |
+| 변수                       | 설명                                                   |
+| -------------------------- | ------------------------------------------------------ |
+| `POSTGRES_PASSWORD`        | DB 비밀번호                                            |
+| `NEXTCLOUD_ADMIN_PASSWORD` | Nextcloud 관리자                                       |
+| `JWT_SECRET`               | 임의의 긴 문자열                                       |
+| `GEMINI_API_KEY`           | [Google AI Studio](https://aistudio.google.com/apikey) |
+| `LLM_API_KEY`              | [opencode.ai](https://opencode.ai/auth)                |
+| `CORS_ORIGIN`              | 브라우저 접속 URL (`http://<공인IP>`)                  |
 
 첫 기동 후 시드가 완료되면 `RUN_SEED=false`로 바꾸고 `docker compose ... up -d`로 재시작하는 것을 권장합니다.
 
@@ -117,13 +117,13 @@ cd ../study-nxcloud-app-oci
 
 ## 7. 리소스·문제 해결
 
-| 증상 | 조치 |
-|------|------|
-| 빌드 OOM | 스왑 추가: `sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile` |
-| Nextcloud 초기화 느림 | `logs -f nextcloud` — 5~10분 대기 |
-| 502 / API 실패 | `backend` 로그, `DATABASE_URL`·Nextcloud URL 확인 |
-| CORS 오류 | `.env`의 `CORS_ORIGIN`이 브라우저 주소와 **완전 일치**하는지 확인 (포트 포함) |
-| 디스크 부족 | `docker system prune -a` (주의: 미사용 이미지 삭제) |
+| 증상                  | 조치                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 빌드 OOM              | 스왑 추가: `sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile` |
+| Nextcloud 초기화 느림 | `logs -f nextcloud` — 5~10분 대기                                                                                         |
+| 502 / API 실패        | `backend` 로그, `DATABASE_URL`·Nextcloud URL 확인                                                                         |
+| CORS 오류             | `.env`의 `CORS_ORIGIN`이 브라우저 주소와 **완전 일치**하는지 확인 (포트 포함)                                             |
+| 디스크 부족           | `docker system prune -a` (주의: 미사용 이미지 삭제)                                                                       |
 
 ## 8. 중지·삭제
 

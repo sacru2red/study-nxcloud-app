@@ -31,6 +31,7 @@ export function LoginPage() {
         <div className="mb-4">
           <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
           <input
+            name="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}

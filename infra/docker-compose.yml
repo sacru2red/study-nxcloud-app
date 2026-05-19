@@ -3,7 +3,7 @@ services:
     image: pgvector/pgvector:pg16
     container_name: nxcloud-postgres
     environment:
-      POSTGRES_DB: nxcloud
+      POSTGRES_DB: nxcloud_app
       POSTGRES_USER: nxcloud
       POSTGRES_PASSWORD: nxcloud123
     ports:
@@ -24,7 +24,7 @@ services:
       NEXTCLOUD_ADMIN_USER: admin
       NEXTCLOUD_ADMIN_PASSWORD: admin123
       POSTGRES_HOST: postgres
-      POSTGRES_DB: nxcloud
+      POSTGRES_DB: nxcloud_app
       POSTGRES_USER: nxcloud
       POSTGRES_PASSWORD: nxcloud123
     ports:

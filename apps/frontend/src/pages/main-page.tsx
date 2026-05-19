@@ -107,6 +107,7 @@ export function MainPage() {
             {docs.map((doc) => (
               <li
                 key={doc.documentId}
+                data-document-id={doc.documentId}
                 onClick={() => handleSelectFile(doc.documentId)}
                 className={
                   'cursor-pointer rounded-lg border bg-white p-3 text-sm hover:shadow-sm' +

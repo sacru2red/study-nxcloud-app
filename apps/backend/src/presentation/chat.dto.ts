@@ -17,5 +17,19 @@ export namespace ChatDto {
     answer: string
     sources: ChatSource[]
     sessionId: string & tags.Format<'uuid'>
+    diagnostics?: ChatDiagnostics
+  }
+
+  export interface ChatDiagnostics {
+    reason: 'NO_RELEVANT_CHUNKS' | 'EMBEDDING_FAILED' | 'LLM_API_FAILED'
+    llmError?: LlmErrorDiagnostics
+  }
+
+  export interface LlmErrorDiagnostics {
+    provider: 'opencode-compatible'
+    statusCode: number | null
+    code: string | null
+    message: string
+    retryAfterSeconds: number | null
   }
 }

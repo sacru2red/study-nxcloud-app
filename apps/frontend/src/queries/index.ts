@@ -36,6 +36,16 @@ export function useFiles(tenantId: string | undefined) {
       return api.functional.tenants.files.list(getConnection(), tenantIdFromQuery)
     },
     enabled: !!tenantId,
+    refetchInterval: (query) => {
+      const files = query.state.data
+      if (!files || files.length === 0) {
+        return false
+      }
+      const hasIndexingFile = files.some(
+        (file) => file.indexStatus === 'PENDING' || file.indexStatus === 'PROCESSING',
+      )
+      return hasIndexingFile ? 2000 : false
+    },
   })
 }
 

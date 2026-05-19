@@ -3,36 +3,152 @@ import { join } from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { workspaceRoot } from '@nx/devkit'
 import { ADMIN_USER, loginAs } from './support/auth'
-import { listDemoPdfs, pickRagPdf, pickQuotaUploadPlan } from './support/demo-pdfs'
-import type { DemoPdf } from './support/demo-pdfs'
 
 const SCREENSHOTS_DIR = join(workspaceRoot, 'docs', 'screenshots')
-const RAG_QUESTION = process.env.DEMO_CHAT_QUESTION || '이 문서의 주요 내용을 요약해 주세요.'
+const DEMO_PDF_NAME = '202212301672357894280.pdf'
+const DEMO_PDF_PATH = join(workspaceRoot, '.tmp', 'demo-pdfs', DEMO_PDF_NAME)
+const RAG_QUESTION = '하이브리드 자동차가 무엇인가요?'
 const NO_SOURCE_QUESTION = '오늘 서울 날씨는 어떤가요?'
+const BACKEND_API_BASE_URL = process.env['BACKEND_API_BASE_URL'] || 'http://localhost:3000/api'
 
 test.describe.configure({ mode: 'serial', timeout: 180_000 })
-
-let ragPdf: DemoPdf
-
-test.beforeAll(() => {
-  mkdirSync(SCREENSHOTS_DIR, { recursive: true })
-})
+let uploadedDocumentId: string | null = null
 
 async function screenshot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: join(SCREENSHOTS_DIR, name), fullPage: false })
 }
 
-async function uploadPdf(page: Page, filePath: string, fileName: string): Promise<void> {
+async function getAccessTokenFromLocalStorage(page: Page): Promise<string> {
+  const raw = await page.evaluate(() => localStorage.getItem('accessToken'))
+  if (!raw) {
+    throw new Error('accessToken not found in localStorage')
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (typeof parsed === 'string') {
+      return parsed
+    }
+    return raw
+  } catch {
+    return raw
+  }
+}
+
+async function getUserInfoFromLocalStorage(page: Page): Promise<{ tenantId: string }> {
+  const raw = await page.evaluate(() => localStorage.getItem('user'))
+  if (!raw) {
+    throw new Error('user not found in localStorage')
+  }
+  const parsed = JSON.parse(raw) as { tenantId?: string }
+  if (!parsed.tenantId) {
+    throw new Error('tenantId not found in localStorage user data')
+  }
+  return { tenantId: parsed.tenantId }
+}
+
+async function waitForUploadedDocumentByListApi(
+  page: Page,
+  accessToken: string,
+  tenantId: string,
+  fileName: string,
+): Promise<string> {
+  const maxAttempts = 60
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const filesResponse = await page.request.get(`${BACKEND_API_BASE_URL}/tenants/${tenantId}/files`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+    if (!filesResponse.ok()) {
+      throw new Error(`Failed to list files for upload fallback: ${filesResponse.status()}`)
+    }
+    const files = (await filesResponse.json()) as Array<{
+      documentId: string
+      fileName: string
+      createdAt?: string
+    }>
+    const matchedFiles = files.filter((file) => file.fileName === fileName)
+    if (matchedFiles.length > 0) {
+      matchedFiles.sort((left, right) =>
+        (right.createdAt ?? '').localeCompare(left.createdAt ?? ''),
+      )
+      return matchedFiles[0].documentId
+    }
+    await page.waitForTimeout(2_000)
+  }
+  throw new Error(`Uploaded file "${fileName}" not found in files list`)
+}
+
+async function uploadPdf(page: Page, filePath: string, fileName: string): Promise<string> {
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().includes('/api/tenants/') &&
+      response.url().includes('/files') &&
+      response.status() === 201,
+    { timeout: 30_000 },
+  )
   await page.getByRole('button', { name: '+ Upload PDF' }).click()
   await page.waitForTimeout(100)
   await page.locator('input[type="file"]').setInputFiles(filePath)
+  const uploadResponse = await uploadResponsePromise
+  const uploadResult = (await uploadResponse.json()) as { documentId?: string }
+  const accessToken = await getAccessTokenFromLocalStorage(page)
+  const userInfo = await getUserInfoFromLocalStorage(page)
+  const documentId =
+    uploadResult.documentId ??
+    (await waitForUploadedDocumentByListApi(page, accessToken, userInfo.tenantId, fileName))
+
+  if (!documentId) {
+    throw new Error('Upload response does not include documentId')
+  }
+
+  // 업로드 직후 목록 캐시가 갱신되지 않은 경우가 있어 강제 새로고침으로 UI를 동기화한다.
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Document AI Chat' })).toBeVisible({
+    timeout: 30_000,
+  })
   await expect(page.getByText(fileName).first()).toBeVisible({ timeout: 30_000 })
+
+  return documentId
 }
 
-async function waitForIndexCompleted(page: Page, fileName: string): Promise<void> {
-  await expect(page.locator('li').filter({ hasText: fileName }).getByText('COMPLETED')).toBeVisible(
-    { timeout: 120_000 },
-  )
+async function waitForIndexCompleted(
+  page: Page,
+  fileName: string,
+  documentId: string,
+): Promise<void> {
+  const accessToken = await getAccessTokenFromLocalStorage(page)
+  const maxAttempts = 30
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const response = await page.request.get(`${BACKEND_API_BASE_URL}/files/${documentId}/index-status`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+    if (response.ok()) {
+      const indexStatus = (await response.json()) as { status?: string }
+      if (indexStatus.status === 'COMPLETED') {
+        return
+      }
+      if (indexStatus.status === 'FAILED') {
+        throw new Error(`Indexing failed for document ${documentId}`)
+      }
+    }
+
+    // 목록 캐시가 stale일 수 있으므로 주기적으로 새로고침해 UI 상태를 동기화한다.
+    if ((attempt + 1) % 3 === 0) {
+      await page.reload()
+      await expect(page.getByRole('heading', { name: 'Document AI Chat' })).toBeVisible({
+        timeout: 30_000,
+      })
+    }
+    await page.waitForTimeout(5_000)
+  }
+
+  const fileItems = page.locator('li').filter({ hasText: fileName })
+  const completedItem = fileItems.filter({ hasText: 'COMPLETED' }).first()
+  await expect(completedItem).toBeVisible({ timeout: 30_000 })
 }
 
 async function askChat(page: Page, question: string): Promise<void> {
@@ -42,51 +158,173 @@ async function askChat(page: Page, question: string): Promise<void> {
   await page.getByPlaceholder('Ask a question about this document...').fill(question)
   await page.getByRole('button', { name: 'Send' }).click()
   await expect(page.getByText('Thinking...')).not.toBeVisible({ timeout: 60_000 })
-  await page
-    .locator('.rounded-2xl.rounded-bl-sm.bg-gray-100')
-    .last()
-    .toBeVisible({ timeout: 60_000 })
+  await expect(page.locator('.rounded-2xl.rounded-bl-sm.bg-gray-100').last()).toBeVisible({
+    timeout: 60_000,
+  })
 }
 
-test('Screenshot 01 - Main Layout', async ({ page }) => {
-  ragPdf = pickRagPdf()
+interface ChatApiResponse {
+  answer?: string
+  sources?: Array<{ pageNo: number; paragraphNo: number }>
+  diagnostics?: {
+    reason?: string
+    llmError?: { retryAfterSeconds?: number | null }
+  }
+}
+
+async function askChatExpectingSources(
+  page: Page,
+  question: string,
+  documentId: string,
+  fileName: string,
+  maxAttempts = 4,
+): Promise<void> {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (attempt > 0) {
+      await page.reload()
+      await expect(page.getByRole('heading', { name: 'Document AI Chat' })).toBeVisible({
+        timeout: 30_000,
+      })
+      await selectDemoFile(page, fileName, documentId)
+    }
+
+    const chatResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().includes('/chat') &&
+        response.ok(),
+      { timeout: 90_000 },
+    )
+    await askChat(page, question)
+    const chatResponse = await chatResponsePromise
+    const chatBody = (await chatResponse.json()) as ChatApiResponse
+
+    if (chatBody.sources && chatBody.sources.length > 0) {
+      await expect(page.getByText(/Page \d+, Paragraph \d+/).first()).toBeVisible({
+        timeout: 10_000,
+      })
+      return
+    }
+
+    const reason = chatBody.diagnostics?.reason ?? 'unknown'
+    const isRetryable = reason === 'LLM_API_FAILED' || reason === 'EMBEDDING_FAILED'
+    if (isRetryable && attempt < maxAttempts - 1) {
+      const retryAfterSeconds = chatBody.diagnostics?.llmError?.retryAfterSeconds ?? 5
+      await page.waitForTimeout(Math.min(retryAfterSeconds * 1000, 30_000))
+      continue
+    }
+
+    throw new Error(
+      `Chat did not return sources for document ${documentId} (reason=${reason}, answer=${chatBody.answer ?? 'n/a'})`,
+    )
+  }
+}
+
+async function goToMainPageAsAdmin(page: Page): Promise<void> {
   await loginAs(page, ADMIN_USER)
-  await uploadPdf(page, ragPdf.path, ragPdf.name)
-  await waitForIndexCompleted(page, ragPdf.name)
-  await page.getByText(ragPdf.name, { exact: false }).click()
-  await page.locator('iframe').waitFor({ state: 'attached', timeout: 30_000 })
-  await screenshot(page, '01-main-layout.png')
+}
+
+async function selectDemoFile(
+  page: Page,
+  fileName: string,
+  documentId?: string | null,
+): Promise<void> {
+  if (documentId) {
+    const documentItem = page.locator(`li[data-document-id="${documentId}"]`)
+    await expect(documentItem).toBeVisible({ timeout: 30_000 })
+    await documentItem.click()
+    return
+  }
+
+  const fileItems = page.locator('li').filter({ hasText: fileName })
+  const completedItems = fileItems.filter({ hasText: 'COMPLETED' })
+  if ((await completedItems.count()) > 0) {
+    await completedItems.first().click()
+    return
+  }
+  await fileItems.first().click()
+}
+
+test.beforeAll(() => {
+  mkdirSync(SCREENSHOTS_DIR, { recursive: true })
 })
 
-test('Screenshot 02 - Index Completed', async ({ page }) => {
-  await page.getByText(ragPdf.name, { exact: false }).click()
-  await expect(
-    page.locator('li').filter({ hasText: ragPdf.name }).getByText('COMPLETED'),
-  ).toBeVisible()
-  await screenshot(page, '02-index-completed.png')
+test('Screenshot 01 - Login', async ({ page }) => {
+  await page.goto('/login')
+  await page.locator('input[type="email"]').fill(ADMIN_USER.email)
+  await page.locator('input[type="password"]').fill(ADMIN_USER.password)
+  await screenshot(page, '01-login.png')
+  await page.getByRole('button', { name: 'Sign In' }).click()
+  await expect(page.getByRole('heading', { name: 'Document AI Chat' })).toBeVisible({
+    timeout: 30_000,
+  })
 })
 
-test('Screenshot 03 - Chat with Sources', async ({ page }) => {
-  await page.getByText(ragPdf.name, { exact: false }).click()
-  await askChat(page, RAG_QUESTION)
-  await expect(page.getByText(/Page \d+, Paragraph \d+/).first()).toBeVisible({ timeout: 60_000 })
-  await screenshot(page, '03-chat-with-sources.png')
+test('Screenshot 02 - Upload PDF', async ({ page }) => {
+  await goToMainPageAsAdmin(page)
+  uploadedDocumentId = await uploadPdf(page, DEMO_PDF_PATH, DEMO_PDF_NAME)
+  await screenshot(page, '02-upload-pdf.png')
 })
 
-test('Screenshot 04 - Chat No Source', async ({ page }) => {
-  await askChat(page, NO_SOURCE_QUESTION)
-  await expect(page.getByText(/문서에서 확인 불가/).first()).toBeVisible({ timeout: 60_000 })
-  await screenshot(page, '04-chat-no-source.png')
+test('Screenshot 03 - Index Completed', async ({ page }) => {
+  await goToMainPageAsAdmin(page)
+  if (!uploadedDocumentId) {
+    throw new Error('uploadedDocumentId is not set from upload step')
+  }
+  await waitForIndexCompleted(page, DEMO_PDF_NAME, uploadedDocumentId)
+  await screenshot(page, '03-index-completed.png')
 })
 
-test('Screenshot 05 - Source Page Navigation', async ({ page }) => {
+test('Screenshot 04 - Main Layout with PDF', async ({ page }) => {
+  await goToMainPageAsAdmin(page)
+  if (!uploadedDocumentId) {
+    throw new Error('uploadedDocumentId is not set from upload step')
+  }
+  await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
+  await expect(page.locator('.react-pdf__Page__canvas').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Page 1')).toBeVisible({ timeout: 30_000 })
+  await page.waitForTimeout(2000)
+  await screenshot(page, '04-main-layout.png')
+})
+
+test('Screenshot 05 - 1 - Chat Question', async ({ page }) => {
+  await goToMainPageAsAdmin(page)
+  if (!uploadedDocumentId) {
+    throw new Error('uploadedDocumentId is not set from upload step')
+  }
+  await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
+  await askChatExpectingSources(page, RAG_QUESTION, uploadedDocumentId, DEMO_PDF_NAME)
+  await screenshot(page, '05-1-chat-with-sources.png')
+
   await page.locator('.rounded-lg.border.border-gray-200.bg-gray-50').first().click()
   await page.locator('span:has-text("Page")').last().waitFor({ state: 'visible', timeout: 10_000 })
   await page.waitForTimeout(1000)
-  await screenshot(page, '05-source-page-nav.png')
+  await screenshot(page, '05-1-1-source-page-nav.png')
 })
 
-test('Screenshot 06 - Admin Usage', async ({ page }) => {
+test('Screenshot 05 - 2 - Chat Question', async ({ page }) => {
+  await goToMainPageAsAdmin(page)
+  if (!uploadedDocumentId) {
+    throw new Error('uploadedDocumentId is not set from upload step')
+  }
+  await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
+  await askChat(page, "개요페이지는 몇 페이지야")
+  await screenshot(page, '05-2-chat-with-sources.png')
+})
+
+test('Screenshot 06 - Chat No Source', async ({ page }) => {
+  await goToMainPageAsAdmin(page)
+  if (!uploadedDocumentId) {
+    throw new Error('uploadedDocumentId is not set from upload step')
+  }
+  await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
+  await askChat(page, NO_SOURCE_QUESTION)
+  await expect(page.getByText(/문서에서 확인 불가/).first()).toBeVisible({ timeout: 60_000 })
+  await screenshot(page, '06-chat-no-source.png')
+})
+
+test('Screenshot 07 - Admin Usage', async ({ page }) => {
+  await goToMainPageAsAdmin(page)
   await page.evaluate(() => {
     window.history.pushState({}, '', '/admin')
     window.dispatchEvent(new PopStateEvent('popstate'))
@@ -95,33 +333,5 @@ test('Screenshot 06 - Admin Usage', async ({ page }) => {
     timeout: 15_000,
   })
   await expect(page.getByRole('table')).toBeVisible({ timeout: 10_000 })
-  await screenshot(page, '06-admin-usage.png')
-})
-
-test('Screenshot 08 - Quota 50%', async ({ page }) => {
-  const quotaPlan = pickQuotaUploadPlan()
-  if (quotaPlan.length === 0) {
-    test.skip()
-    return
-  }
-
-  await page.evaluate(() => {
-    window.history.pushState({}, '', '/')
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  })
-  await expect(page.getByRole('heading', { name: 'Document AI Chat' })).toBeVisible()
-
-  for (const pdf of quotaPlan) {
-    const uploadName = `${Date.now()}_${pdf.name}`
-    await uploadPdf(page, pdf.path, uploadName)
-  }
-
-  await page.evaluate(() => {
-    window.history.pushState({}, '', '/admin')
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  })
-  await expect(page.getByRole('heading', { name: 'Admin Dashboard' })).toBeVisible({
-    timeout: 15_000,
-  })
-  await screenshot(page, '08-quota-50pct.png')
+  await screenshot(page, '07-admin-usage.png')
 })

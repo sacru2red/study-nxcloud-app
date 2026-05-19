@@ -85,7 +85,7 @@
           "commands": [
             "docker compose -f infra/docker-compose.yml down -v --remove-orphans",
             "docker compose -f infra/docker-compose.yml up -d",
-            "npx prisma db push --schema=prisma/schema.prisma --config=prisma/prisma.config.ts --force-reset",
+            "npx prisma db push --schema=prisma/schema.prisma --config=prisma/prisma.config.ts --accept-data-loss",
             "npx tsx prisma/seed.ts"
           ]
         }

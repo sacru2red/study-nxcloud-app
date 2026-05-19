@@ -32,7 +32,7 @@ export namespace AuthProvider {
 
   export const getQuota = async (userId: string) => {
     const user = await prisma.user.findUnique({ where: { userId } })
-    if (!user) throw new Error('User not found')
+    if (!user) throw new Error('User not found' + userId)
     const quota = await NextcloudProvider.getUserQuota(user.ncUserId)
     return {
       usedBytes: quota.used,

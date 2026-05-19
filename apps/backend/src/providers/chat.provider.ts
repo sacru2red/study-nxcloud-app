@@ -1,8 +1,38 @@
 import { prisma } from '../prisma'
 import { EmbeddingProvider } from './embedding.provider'
-import { LlmProvider } from './llm.provider'
+import { LlmChatError, LlmProvider } from './llm.provider'
 
 const SIMILARITY_THRESHOLD = 0.3
+
+type ChatProviderReason = 'NO_RELEVANT_CHUNKS' | 'EMBEDDING_FAILED' | 'LLM_API_FAILED'
+
+interface ChatProviderLlmErrorDiagnostics {
+  provider: 'opencode-compatible'
+  statusCode: number | null
+  code: string | null
+  message: string
+  retryAfterSeconds: number | null
+}
+
+interface ChatProviderDiagnostics {
+  reason: ChatProviderReason
+  llmError?: ChatProviderLlmErrorDiagnostics
+}
+
+interface ChatProviderSource {
+  fileName: string
+  pageNo: number
+  paragraphNo: number
+  text: string
+  similarity: number
+}
+
+interface ChatProviderResponse {
+  answer: string
+  sources: ChatProviderSource[]
+  sessionId: string
+  diagnostics?: ChatProviderDiagnostics
+}
 
 export namespace ChatProvider {
   export const chat = async (
@@ -10,7 +40,7 @@ export namespace ChatProvider {
     tenantId: string,
     userId: string,
     question: string,
-  ) => {
+  ): Promise<ChatProviderResponse> => {
     const doc = await prisma.document.findFirst({
       where: { documentId, tenantId },
     })
@@ -42,7 +72,12 @@ export namespace ChatProvider {
           },
         ],
       })
-      return { answer, sources: [], sessionId: session.sessionId }
+      return {
+        answer,
+        sources: [],
+        sessionId: session.sessionId,
+        diagnostics: { reason: 'EMBEDDING_FAILED' },
+      }
     }
 
     const vectorStr = `[${questionVector.join(',')}]`
@@ -71,26 +106,58 @@ export namespace ChatProvider {
     const relevantResults = results.filter((r) => r.similarity >= SIMILARITY_THRESHOLD)
 
     let answer: string
-    let sources: Array<{
-      fileName: string
-      pageNo: number
-      paragraphNo: number
-      text: string
-      similarity: number
-    }>
+    let sources: ChatProviderSource[]
+    let diagnostics: ChatProviderDiagnostics | undefined
 
     if (relevantResults.length === 0) {
       answer = '문서에서 확인 불가'
       sources = []
+      diagnostics = { reason: 'NO_RELEVANT_CHUNKS' }
     } else {
       const context = relevantResults.map((r) => r.chunk_text).join('\n\n')
       try {
         answer = await LlmProvider.chat(question, context)
       } catch (error) {
-        console.error('chat error on llmProvider.chat', error)
+        if (error instanceof LlmChatError) {
+          diagnostics = {
+            reason: 'LLM_API_FAILED',
+            llmError: {
+              provider: 'opencode-compatible',
+              statusCode: error.statusCode,
+              code: error.code,
+              message: error.message,
+              retryAfterSeconds: error.retryAfterSeconds,
+            },
+          }
+          console.error('[ChatProvider] LLM API failed', {
+            documentId,
+            tenantId,
+            userId,
+            statusCode: error.statusCode,
+            code: error.code,
+            retryAfterSeconds: error.retryAfterSeconds,
+            message: error.message,
+          })
+        } else {
+          diagnostics = {
+            reason: 'LLM_API_FAILED',
+            llmError: {
+              provider: 'opencode-compatible',
+              statusCode: null,
+              code: null,
+              message: error instanceof Error ? error.message : 'Unknown LLM error',
+              retryAfterSeconds: null,
+            },
+          }
+          console.error('[ChatProvider] Unknown LLM failure', {
+            documentId,
+            tenantId,
+            userId,
+            error,
+          })
+        }
 
         answer = '문서에서 확인 불가'
-        relevantResults.length = 0
       }
       sources = relevantResults.map((r) => ({
         fileName: r.file_name,
@@ -113,6 +180,6 @@ export namespace ChatProvider {
       ],
     })
 
-    return { answer, sources, sessionId: session.sessionId }
+    return { answer, sources, sessionId: session.sessionId, diagnostics }
   }
 }

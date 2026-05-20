@@ -98,7 +98,7 @@ Playwright가 `backend:build` 후 `node dist/apps/backend/main.js`(3000)와 `npx
 
 ### 데모 캡처 (스크린샷 자동 생성)
 
-`.tmp/demo-pdfs/`에 PDF를 배치한 후 아래 명령으로 `docs/screenshots/`에 스크린샷과 `docs/demo-capture.webm`을 갱신합니다. **기본적으로 Gemini 임베딩**을 사용합니다(`.env`의 `GEMINI_API_KEY`).
+`.tmp/demo-pdfs/`에 PDF를 배치한 후 아래 명령으로 `docs/screenshots/`에 스크린샷과 `docs/demo-capture.webm` / `docs/demo-capture.mp4`를 갱신합니다. **기본적으로 Gemini 임베딩**을 사용합니다(`.env`의 `GEMINI_API_KEY`). README에는 MP4 링크(썸네일)를 사용합니다.
 
 ```bash
 npx nx run backend:prepare-e2e:reset   # 권장: 이전 실행의 중복 PDF·청크 제거

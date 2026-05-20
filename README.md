@@ -30,14 +30,17 @@ E2E 데모 녹화 합본 (`docs/demo-capture.webm`):
 
 ### 데모 재생성
 
-스크린샷·동영상을 다시 만들 때:
+스크린샷·동영상을 다시 만들 때 (`.env`에 `GEMINI_API_KEY` 등 필요, 인덱싱·채팅은 **실제 Gemini 임베딩** 사용):
 
 ```bash
+npx nx run backend:prepare-e2e:reset   # 선택: DB/업로드 초기화 후 깨끗한 데모
 npx nx run frontend-e2e:capture-demo
 node tools/concat-demo-videos.js
 ```
 
-Playwright가 `docs/screenshots/`에 PNG를 저장하고, 개별 시나리오별 `test-results/` WebM을 합쳐 `docs/demo-capture.webm`을 생성합니다. 저장소에는 위 경로의 산출물을 커밋합니다.
+Playwright가 `docs/screenshots/`에 PNG를 저장하고, 개별 시나리오별 `test-results/` WebM을 합쳐 `docs/demo-capture.webm`을 생성합니다.
+
+> **주의:** `MOCK_EMBEDDINGS=true`는 Gemini 할당량(429) 우회용이며, 토큰 해시 기반이라 RAG 검색·채팅 답변 품질이 크게 떨어집니다. 데모 영상/스크린샷에는 사용하지 마세요. 할당량이 없을 때만 E2E 통과 목적으로 쓰고, 캡처 전 `prepare-e2e:reset`으로 청크를 mock과 동일한 방식으로 다시 인덱싱해야 합니다.
 
 ## 아키텍처
 
@@ -219,7 +222,7 @@ tenants (tenant_id PK)
 | Frontend     | React 19 + Vite 8 + TailwindCSS 3  |
 | Database     | PostgreSQL 16 + pgvector           |
 | File Storage | Nextcloud (WebDAV + OCS API)       |
-| Embedding    | Gemini gemini-embedding-001 (768d) |
+| Embedding    | Gemini gemini-embedding-001 (768d); optional OpenRouter fallback |
 | LLM          | opencode zen                       |
 | Auth         | JWT (bcrypt + @nestjs/jwt)         |
 | State        | jotai + @tanstack/react-query      |

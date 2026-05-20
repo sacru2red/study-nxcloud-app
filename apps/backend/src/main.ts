@@ -24,6 +24,11 @@ async function bootstrap() {
   const port = process.env.BACKEND_PORT || 3000
   await app.listen(port)
   Logger.log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix}`)
+  if (process.env['MOCK_EMBEDDINGS'] === 'true') {
+    Logger.warn(
+      'MOCK_EMBEDDINGS=true: RAG uses token-hash vectors (not Gemini). Chat answers and retrieved chunks may be inaccurate.',
+    )
+  }
 }
 
 bootstrap()

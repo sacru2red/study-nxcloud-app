@@ -3,8 +3,27 @@ import { prisma } from '../prisma'
 
 const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL ?? 'gemini-embedding-001'
 const EMBEDDING_DIMENSIONS = 768
+const EMBEDDING_FALLBACK_URL =
+  process.env.EMBEDDING_FALLBACK_URL ?? 'https://openrouter.ai/api/v1/embeddings'
+const EMBEDDING_FALLBACK_MODEL =
+  process.env.EMBEDDING_FALLBACK_MODEL ?? 'openai/text-embedding-3-small'
 const USE_MOCK_EMBEDDINGS = process.env['MOCK_EMBEDDINGS'] === 'true'
-const MAX_EMBEDDING_RETRIES = 5
+const MAX_EMBEDDING_RETRIES = 8
+const MAX_FALLBACK_RETRIES = 4
+const CHUNK_EMBED_MAX_ATTEMPTS = 12
+const CHUNK_EMBED_DELAY_MS = USE_MOCK_EMBEDDINGS ? 0 : 1_200
+
+interface GeminiEmbedResponse {
+  embedding: { values: number[] }
+}
+
+interface OpenRouterEmbeddingsResponse {
+  data: Array<{ embedding: number[] }>
+}
+
+function isFallbackConfigured(): boolean {
+  return Boolean(process.env.OPENROUTER_API_KEY?.trim())
+}
 
 function createMockEmbedding(text: string): number[] {
   const vector = new Array<number>(EMBEDDING_DIMENSIONS).fill(0)
@@ -55,48 +74,126 @@ function parseRetryAfterMs(error: unknown): number | null {
   return null
 }
 
+function assertEmbeddingDimensions(embedding: number[], source: string): number[] {
+  if (embedding.length !== EMBEDDING_DIMENSIONS) {
+    throw new Error(
+      `${source} embedding dimension mismatch: expected ${EMBEDDING_DIMENSIONS}, got ${embedding.length}`,
+    )
+  }
+  return embedding
+}
+
+async function generateGeminiEmbedding(text: string): Promise<number[]> {
+  const apiKey = process.env.GEMINI_API_KEY
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`
+
+  let lastError: unknown
+  for (let attempt = 0; attempt < MAX_EMBEDDING_RETRIES; attempt += 1) {
+    try {
+      const response = await axios.post<GeminiEmbedResponse>(url, {
+        model: `models/${EMBEDDING_MODEL}`,
+        content: { parts: [{ text }] },
+        outputDimensionality: EMBEDDING_DIMENSIONS,
+      })
+
+      return assertEmbeddingDimensions(response.data.embedding.values, 'Gemini')
+    } catch (error) {
+      lastError = error
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined
+
+      if (status === 429 && isFallbackConfigured()) {
+        throw error
+      }
+
+      if (status !== 429 || attempt >= MAX_EMBEDDING_RETRIES - 1) {
+        throw error
+      }
+
+      const retryAfterMs = parseRetryAfterMs(error) ?? (attempt + 1) * 1000
+      await new Promise((resolve) => setTimeout(resolve, retryAfterMs))
+    }
+  }
+
+  throw lastError
+}
+
+async function generateFallbackEmbedding(text: string): Promise<number[]> {
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim()
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY is not configured')
+  }
+
+  let lastError: unknown
+  for (let attempt = 0; attempt < MAX_FALLBACK_RETRIES; attempt += 1) {
+    try {
+      const response = await axios.post<OpenRouterEmbeddingsResponse>(
+        EMBEDDING_FALLBACK_URL,
+        {
+          model: EMBEDDING_FALLBACK_MODEL,
+          input: text,
+          dimensions: EMBEDDING_DIMENSIONS,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 30_000,
+        },
+      )
+
+      const embedding = response.data.data[0]?.embedding
+      if (!embedding) {
+        throw new Error('OpenRouter embeddings response missing embedding data')
+      }
+
+      return assertEmbeddingDimensions(embedding, 'OpenRouter fallback')
+    } catch (error) {
+      lastError = error
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined
+      if (status !== 429 || attempt >= MAX_FALLBACK_RETRIES - 1) {
+        throw error
+      }
+
+      const retryAfterMs = parseRetryAfterMs(error) ?? (attempt + 1) * 1000
+      await new Promise((resolve) => setTimeout(resolve, retryAfterMs))
+    }
+  }
+
+  throw lastError
+}
+
 export namespace EmbeddingProvider {
   export const generateEmbedding = async (text: string): Promise<number[]> => {
     if (USE_MOCK_EMBEDDINGS) {
       return createMockEmbedding(text)
     }
 
-    const apiKey = process.env.GEMINI_API_KEY
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`
-
-    let lastError: unknown
-    for (let attempt = 0; attempt < MAX_EMBEDDING_RETRIES; attempt += 1) {
-      try {
-        const response = await axios.post<{ embedding: { values: number[] } }>(url, {
-          model: `models/${EMBEDDING_MODEL}`,
-          content: { parts: [{ text }] },
-          outputDimensionality: EMBEDDING_DIMENSIONS,
-        })
-
-        return response.data.embedding.values
-      } catch (error) {
-        lastError = error
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status !== 429 || attempt >= MAX_EMBEDDING_RETRIES - 1) {
-          throw error
-        }
-
-        const retryAfterMs = parseRetryAfterMs(error) ?? (attempt + 1) * 1000
-        await new Promise((resolve) => setTimeout(resolve, retryAfterMs))
+    try {
+      return await generateGeminiEmbedding(text)
+    } catch (primaryError) {
+      if (!isFallbackConfigured()) {
+        throw primaryError
       }
-    }
 
-    throw lastError
+      const status = axios.isAxiosError(primaryError) ? primaryError.response?.status : undefined
+      console.warn('[EmbeddingProvider] Primary embedding failed, using OpenRouter fallback', {
+        status,
+        message: primaryError instanceof Error ? primaryError.message : primaryError,
+      })
+
+      return await generateFallbackEmbedding(text)
+    }
   }
 
   export const batchEmbedAndStore = async (
     tenantId: string,
     chunks: Array<{ chunkId: string; text: string }>,
   ) => {
-    const batchSize = 50
-    for (let i = 0; i < chunks.length; i += batchSize) {
-      const batch = chunks.slice(i, i + batchSize)
-      for (const chunk of batch) {
+    let failedCount = 0
+    for (const chunk of chunks) {
+      let stored = false
+      for (let attempt = 0; attempt < CHUNK_EMBED_MAX_ATTEMPTS; attempt += 1) {
         try {
           const embedding = await generateEmbedding(chunk.text)
           const vectorStr = `[${embedding.join(',')}]`
@@ -105,17 +202,33 @@ export namespace EmbeddingProvider {
             vectorStr,
             chunk.chunkId,
           )
+          stored = true
+          break
         } catch (error) {
-          console.error('[EmbeddingProvider] Failed to embed chunk', {
-            tenantId,
-            chunkId: chunk.chunkId,
-            error: error instanceof Error ? error.message : error,
-          })
+          const retryAfterMs = parseRetryAfterMs(error) ?? (attempt + 1) * 2_000
+          if (attempt >= CHUNK_EMBED_MAX_ATTEMPTS - 1) {
+            console.error('[EmbeddingProvider] Failed to embed chunk', {
+              tenantId,
+              chunkId: chunk.chunkId,
+              error: error instanceof Error ? error.message : error,
+            })
+          } else {
+            await new Promise((resolve) => setTimeout(resolve, retryAfterMs))
+          }
         }
       }
-      if (i + batchSize < chunks.length) {
-        await new Promise((resolve) => setTimeout(resolve, USE_MOCK_EMBEDDINGS ? 0 : 1000))
+      if (!stored) {
+        failedCount += 1
       }
+      if (CHUNK_EMBED_DELAY_MS > 0) {
+        await new Promise((resolve) => setTimeout(resolve, CHUNK_EMBED_DELAY_MS))
+      }
+    }
+
+    if (failedCount > 0) {
+      throw new Error(
+        `Failed to embed ${failedCount}/${chunks.length} chunks for tenant ${tenantId}`,
+      )
     }
   }
 }

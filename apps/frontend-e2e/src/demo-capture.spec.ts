@@ -11,7 +11,7 @@ const RAG_QUESTION = '하이브리드 자동차가 무엇인가요?'
 const NO_SOURCE_QUESTION = '오늘 서울 날씨는 어떤가요?'
 const BACKEND_API_BASE_URL = process.env['BACKEND_API_BASE_URL'] || 'http://localhost:3000/api'
 
-test.describe.configure({ mode: 'serial', timeout: 180_000 })
+test.describe.configure({ mode: 'serial', timeout: 900_000 })
 let uploadedDocumentId: string | null = null
 
 async function screenshot(page: Page, name: string): Promise<void> {
@@ -119,7 +119,7 @@ async function waitForIndexCompleted(
   documentId: string,
 ): Promise<void> {
   const accessToken = await getAccessTokenFromLocalStorage(page)
-  const maxAttempts = 30
+  const maxAttempts = 150
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const response = await page.request.get(`${BACKEND_API_BASE_URL}/files/${documentId}/index-status`, {
       headers: {
@@ -129,6 +129,14 @@ async function waitForIndexCompleted(
     if (response.ok()) {
       const indexStatus = (await response.json()) as { status?: string }
       if (indexStatus.status === 'COMPLETED') {
+        await page.reload()
+        await expect(page.getByRole('heading', { name: 'Document AI Chat' })).toBeVisible({
+          timeout: 30_000,
+        })
+        const completedItem = page
+          .locator(`li[data-document-id="${documentId}"]`)
+          .filter({ hasText: 'COMPLETED' })
+        await expect(completedItem).toBeVisible({ timeout: 30_000 })
         return
       }
       if (indexStatus.status === 'FAILED') {
@@ -136,7 +144,6 @@ async function waitForIndexCompleted(
       }
     }
 
-    // 목록 캐시가 stale일 수 있으므로 주기적으로 새로고침해 UI 상태를 동기화한다.
     if ((attempt + 1) % 3 === 0) {
       await page.reload()
       await expect(page.getByRole('heading', { name: 'Document AI Chat' })).toBeVisible({
@@ -146,9 +153,9 @@ async function waitForIndexCompleted(
     await page.waitForTimeout(5_000)
   }
 
-  const fileItems = page.locator('li').filter({ hasText: fileName })
-  const completedItem = fileItems.filter({ hasText: 'COMPLETED' }).first()
-  await expect(completedItem).toBeVisible({ timeout: 30_000 })
+  throw new Error(
+    `Indexing did not complete within ${(maxAttempts * 5) / 60} minutes for document ${documentId} (${fileName})`,
+  )
 }
 
 async function askChat(page: Page, question: string): Promise<void> {

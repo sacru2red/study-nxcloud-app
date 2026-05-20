@@ -30,6 +30,7 @@ cp .env.template .env
 `.env` 파일을 열고 다음 값들을 설정하세요:
 
 - `GEMINI_API_KEY`: Google AI Studio에서 발급
+- `OPENROUTER_API_KEY` (선택): Gemini 실패·429 시 OpenRouter 임베딩 폴백. 설정 시 `EMBEDDING_FALLBACK_URL` / `EMBEDDING_FALLBACK_MODEL`로 URL·모델 변경 가능(기본 `openai/text-embedding-3-small`, 768차원). 폴백 사용 후에는 기존 문서를 **재인덱싱**하는 것이 좋습니다(Gemini·OpenRouter 벡터가 섞이면 검색 품질이 떨어질 수 있음).
 - `LLM_API_KEY`: opencode.ai에서 발급
 - `JWT_SECRET`: 임의의 문자열로 변경
 
@@ -97,14 +98,17 @@ Playwright가 `backend:build` 후 `node dist/apps/backend/main.js`(3000)와 `npx
 
 ### 데모 캡처 (스크린샷 자동 생성)
 
-`.tmp/demo-pdfs/`에 PDF를 배치한 후 아래 명령으로 `docs/screenshots/`에 스크린샷과 `docs/demo-capture.webm`을 갱신합니다.
+`.tmp/demo-pdfs/`에 PDF를 배치한 후 아래 명령으로 `docs/screenshots/`에 스크린샷과 `docs/demo-capture.webm`을 갱신합니다. **기본적으로 Gemini 임베딩**을 사용합니다(`.env`의 `GEMINI_API_KEY`).
 
 ```bash
+npx nx run backend:prepare-e2e:reset   # 권장: 이전 실행의 중복 PDF·청크 제거
 npx nx run frontend-e2e:capture-demo
 node tools/concat-demo-videos.js
 ```
 
 산출물은 README Demo 섹션에서 참조하며, 버전 관리 대상입니다.
+
+Gemini embedding 무료 할당량(429)으로 E2E만 통과시킬 때는 `MOCK_EMBEDDINGS=true npx nx run frontend-e2e:capture-demo`를 쓸 수 있으나, mock은 의미 기반이 아니라 **단어 겹침(해시)** 에 가깝기 때문에 채팅 답변·근거 청크가 부정확해집니다. mock 사용 시 반드시 `prepare-e2e:reset` 후 캡처해 인덱싱·질문이 같은 벡터 공간을 쓰게 하세요.
 
 ## 수동 API 테스트 시나리오
 

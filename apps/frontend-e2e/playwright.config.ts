@@ -4,12 +4,13 @@ import { nxE2EPreset } from '@nx/playwright/preset'
 import { workspaceRoot } from '@nx/devkit'
 
 const baseURL = process.env['BASE_URL'] || 'http://localhost:4200'
+// MOCK_EMBEDDINGS는 E2E 통과용(토큰 해시 기반)으로 RAG 품질이 크게 떨어집니다.
+// 데모 스크린샷/영상 품질이 필요하면 설정하지 말고 Gemini 할당량을 사용하세요.
 const isDemoCaptureRun =
   process.argv.includes('--project=demo-capture') ||
   process.argv.some((arg) => arg.includes('demo-capture'))
-const mockEmbeddingsEnabled =
-  process.env['MOCK_EMBEDDINGS'] === 'true' || isDemoCaptureRun
-const reuseExistingServer = !process.env['CI'] && !mockEmbeddingsEnabled
+const mockEmbeddingsEnabled = process.env['MOCK_EMBEDDINGS'] === 'true'
+const reuseExistingServer = !process.env['CI'] && !isDemoCaptureRun
 
 export default defineConfig({
   ...nxE2EPreset(__filename, { testDir: './src' }),
@@ -52,7 +53,7 @@ export default defineConfig({
     {
       name: 'demo-capture',
       testMatch: /demo-capture\.spec\.ts/,
-      timeout: 180_000,
+      timeout: 900_000,
       use: {
         video: 'on',
         viewport: { width: 1440, height: 900 },

@@ -98,17 +98,25 @@ Playwright가 `backend:build` 후 `node dist/apps/backend/main.js`(3000)와 `npx
 
 ### 데모 캡처 (스크린샷 자동 생성)
 
-`.tmp/demo-pdfs/`에 PDF를 배치한 후 아래 명령으로 `docs/screenshots/`에 스크린샷과 `docs/demo-capture.webm` / `docs/demo-capture.mp4`를 갱신합니다. **기본적으로 Gemini 임베딩**을 사용합니다(`.env`의 `GEMINI_API_KEY`). README에는 MP4 링크(썸네일)를 사용합니다.
+README Demo 섹션의 스크린샷·동영상을 다시 만들 때 사용합니다. `.tmp/demo-pdfs/`에 PDF(`202212301672357894280.pdf`)를 배치한 뒤, `.env`에 `GEMINI_API_KEY` 등 API 키를 설정합니다. 인덱싱·채팅은 **실제 Gemini 임베딩**을 사용합니다(README에는 MP4 썸네일 링크).
 
 ```bash
-npx nx run backend:prepare-e2e:reset   # 권장: 이전 실행의 중복 PDF·청크 제거
+npx nx run backend:prepare-e2e:reset   # 권장: DB/업로드 초기화 후 깨끗한 데모
 npx nx run frontend-e2e:capture-demo
 node tools/concat-demo-videos.js
 ```
 
-산출물은 README Demo 섹션에서 참조하며, 버전 관리 대상입니다.
+| 단계 | 명령 | 산출물 |
+| ---- | ---- | ------ |
+| 1 | `prepare-e2e:reset` | Docker·DB·Nextcloud 초기화 |
+| 2 | `capture-demo` | `docs/screenshots/*.png`, `test-results/**/video.webm` |
+| 3 | `concat-demo-videos.js` | `docs/demo-capture.webm`, `docs/demo-capture.mp4` |
 
-Gemini embedding 무료 할당량(429)으로 E2E만 통과시킬 때는 `MOCK_EMBEDDINGS=true npx nx run frontend-e2e:capture-demo`를 쓸 수 있으나, mock은 의미 기반이 아니라 **단어 겹침(해시)** 에 가깝기 때문에 채팅 답변·근거 청크가 부정확해집니다. mock 사용 시 반드시 `prepare-e2e:reset` 후 캡처해 인덱싱·질문이 같은 벡터 공간을 쓰게 하세요.
+`tools/concat-demo-videos.js`는 `test-results/`의 시나리오별 WebM을 01→07(05-1·05-2 순)으로 합친 뒤 MP4(H.264)로 변환합니다. WebM만 다시 MP4로 만들 때: `node tools/concat-demo-videos.js --mp4-only`
+
+산출물은 README Demo에서 참조하며, 버전 관리 대상입니다.
+
+> **주의:** `MOCK_EMBEDDINGS=true`는 Gemini 할당량(429) 우회용이며, 토큰 해시 기반이라 RAG 검색·채팅 답변 품질이 크게 떨어집니다. 데모 영상/스크린샷에는 사용하지 마세요. mock 사용 시 `prepare-e2e:reset` 후 캡처해 인덱싱·질문이 같은 벡터 공간을 쓰게 하세요.
 
 ## 수동 API 테스트 시나리오
 

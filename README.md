@@ -26,21 +26,7 @@ GitHub README는 동영상 인라인 재생을 지원하지 않습니다. 아래
 
 [![Demo video — click to play](docs/screenshots/04-main-layout.png)](docs/demo-capture.mp4)
 
-[WebM](./docs/demo-capture.webm) · [MP4](./docs/demo-capture.mp4)
-
-### 데모 재생성
-
-스크린샷·동영상을 다시 만들 때 (`.env`에 `GEMINI_API_KEY` 등 필요, 인덱싱·채팅은 **실제 Gemini 임베딩** 사용):
-
-```bash
-npx nx run backend:prepare-e2e:reset   # 선택: DB/업로드 초기화 후 깨끗한 데모
-npx nx run frontend-e2e:capture-demo
-node tools/concat-demo-videos.js
-```
-
-Playwright가 `docs/screenshots/`에 PNG를 저장하고, `node tools/concat-demo-videos.js`가 `test-results/` WebM을 합쳐 `docs/demo-capture.webm`과 `docs/demo-capture.mp4`를 생성합니다.
-
-> **주의:** `MOCK_EMBEDDINGS=true`는 Gemini 할당량(429) 우회용이며, 토큰 해시 기반이라 RAG 검색·채팅 답변 품질이 크게 떨어집니다. 데모 영상/스크린샷에는 사용하지 마세요. 할당량이 없을 때만 E2E 통과 목적으로 쓰고, 캡처 전 `prepare-e2e:reset`으로 청크를 mock과 동일한 방식으로 다시 인덱싱해야 합니다.
+[MP4](./docs/demo-capture.mp4) · [WebM](./docs/demo-capture.webm)
 
 ## 아키텍처
 
@@ -215,19 +201,19 @@ tenants (tenant_id PK)
 
 ### 기술 스택
 
-| Category     | Technology                         |
-| ------------ | ---------------------------------- |
-| Monorepo     | Nx 22.7                            |
-| Backend      | NestJS 11 + Nestia 11              |
-| Frontend     | React 19 + Vite 8 + TailwindCSS 3  |
-| Database     | PostgreSQL 16 + pgvector           |
-| File Storage | Nextcloud (WebDAV + OCS API)       |
+| Category     | Technology                                                       |
+| ------------ | ---------------------------------------------------------------- |
+| Monorepo     | Nx 22.7                                                          |
+| Backend      | NestJS 11 + Nestia 11                                            |
+| Frontend     | React 19 + Vite 8 + TailwindCSS 3                                |
+| Database     | PostgreSQL 16 + pgvector                                         |
+| File Storage | Nextcloud (WebDAV + OCS API)                                     |
 | Embedding    | Gemini gemini-embedding-001 (768d); optional OpenRouter fallback |
-| LLM          | opencode zen                       |
-| Auth         | JWT (bcrypt + @nestjs/jwt)         |
-| State        | jotai + @tanstack/react-query      |
-| Router       | @tanstack/react-router             |
-| SDK          | typia + @nestia/core               |
+| LLM          | opencode zen                                                     |
+| Auth         | JWT (bcrypt + @nestjs/jwt)                                       |
+| State        | jotai + @tanstack/react-query                                    |
+| Router       | @tanstack/react-router                                           |
+| SDK          | typia + @nestia/core                                             |
 
 ## 문서
 
@@ -307,3 +293,4 @@ tenants (tenant_id PK)
 - [x] 50MB 이상 파일 업로드 used/quota 사용률이 50% 이상으로 표시된다.
 - [x] Nextcloud API 인증 실패 Backend가 5xx 오류와 안전한 메시지를 반환한다.
 - [ ] Vector DB 장애 채팅 응답 실패 메시지를 표시하고 시스템 로그에 원인을 기록한다.
+

@@ -1,4 +1,4 @@
-import { Controller, Get, NotFoundException, Res, UseGuards } from '@nestjs/common'
+import { BadRequestException, Controller, Get, NotFoundException, Res, UseGuards } from '@nestjs/common'
 import { TypedRoute, TypedParam, TypedFormData } from '@nestia/core'
 import Multer from 'multer'
 import type { Response } from 'express'
@@ -50,6 +50,14 @@ export class FileStatusController {
     @CurrentUser() user: IJwtPayload,
   ): Promise<FilesDto.IndexStatusResponse> {
     return FilesProvider.getIndexStatus(fileId, user.tenantId)
+  }
+
+  @TypedRoute.Post(':fileId/retry')
+  async retryIndex(
+    @TypedParam('fileId') fileId: string,
+    @CurrentUser() user: IJwtPayload,
+  ): Promise<FilesDto.RetryResponse> {
+    return FilesProvider.retryIndex(fileId, user.tenantId)
   }
 
   @Get(':fileId/content')

@@ -1,4 +1,5 @@
 import type { Document } from 'prisma-client'
+import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { prisma } from '../prisma'
 import { NextcloudProvider } from './nextcloud.provider'
 import { PdfWorkerProvider } from './pdf-worker.provider'
@@ -106,5 +107,33 @@ export namespace FilesProvider {
       mimeType: doc.mimeType ?? 'application/pdf',
       buffer: fileBuffer,
     }
+  }
+
+  export const retryIndex = async (documentId: string, tenantId: string): Promise<{ documentId: string; status: string }> => {
+    const doc = await prisma.document.findFirst({
+      where: { documentId, tenantId },
+    })
+    if (!doc) throw new NotFoundException('Document not found')
+    if (doc.indexStatus === 'COMPLETED') throw new BadRequestException('Cannot retry a completed document')
+
+    await prisma.documentChunk.deleteMany({
+      where: { documentId },
+    })
+
+    await prisma.document.update({
+      where: { documentId },
+      data: {
+        indexStatus: 'PENDING',
+        pageCount: 0,
+        chunkCount: 0,
+        indexedAt: null,
+      },
+    })
+
+    PdfWorkerProvider.processDocument(documentId).catch((err) => {
+      console.error(`[PdfWorker] Retry failed for document ${documentId}:`, err)
+    })
+
+    return { documentId, status: 'PENDING' }
   }
 }

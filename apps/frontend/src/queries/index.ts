@@ -98,6 +98,19 @@ export function useUsersUsage(tenantId: string | undefined) {
   })
 }
 
+export function useRetryIndex() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (fileId: string) => {
+      return api.functional.files.retry.retryIndex(getConnection(), fileId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['files'] })
+      queryClient.invalidateQueries({ queryKey: ['index-status'] })
+    },
+  })
+}
+
 export function useIndexStatus(fileId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['index-status', fileId] as const,

@@ -28,4 +28,9 @@ export namespace FilesDto {
     pageCount: number
     chunkCount: number
   }
+
+  export interface RetryResponse {
+    documentId: string & tags.Format<'uuid'>
+    status: string
+  }
 }

@@ -2,15 +2,18 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { join } from 'path'
 import { JwtModule, type JwtSignOptions } from '@nestjs/jwt'
+import { ScheduleModule } from '@nestjs/schedule'
 import { AppController } from '../presentation/app.controller'
 import { AuthController } from '../presentation/auth.controller'
 import { FilesController, FileStatusController } from '../presentation/files.controller'
 import { AdminController } from '../presentation/admin.controller'
 import { ChatController } from '../presentation/chat.controller'
 import { FolderController } from '../presentation/folder.controller'
+import { JobSchedulerProvider } from '../providers/job-scheduler.provider'
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [
@@ -35,5 +38,6 @@ import { FolderController } from '../presentation/folder.controller'
     ChatController,
     FolderController,
   ],
+  providers: [JobSchedulerProvider],
 })
 export class AppModule {}

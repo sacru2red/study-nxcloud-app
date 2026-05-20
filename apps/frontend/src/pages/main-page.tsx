@@ -3,7 +3,7 @@ import { Navigate } from '@tanstack/react-router'
 import { useAtom } from 'jotai'
 import { userAtom, isAuthenticatedAtom } from '../stores/auth'
 import { selectedFileIdAtom } from '../stores/files'
-import { useFiles, useUploadFile, useIndexStatus } from '../queries'
+import { useFiles, useUploadFile, useIndexStatus, useRetryIndex } from '../queries'
 import { PdfViewer } from '../components/pdf-viewer'
 import { ChatPanel } from '../components/chat-panel'
 
@@ -16,6 +16,7 @@ export function MainPage() {
 
   const { data: docs, isLoading } = useFiles(user?.tenantId)
   const uploadMutation = useUploadFile(user?.tenantId)
+  const retryMutation = useRetryIndex()
 
   const selectedDoc = docs?.find((d) => d.documentId === selectedFileId)
 
@@ -145,6 +146,29 @@ export function MainPage() {
                 >
                   다운로드
                 </button>
+                {doc.indexStatus !== 'COMPLETED' && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      retryMutation.mutate(doc.documentId)
+                    }}
+                    disabled={retryMutation.isPending}
+                    className="mt-1 w-full rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {retryMutation.isPending ? (
+                      <span className="flex items-center justify-center gap-1">
+                        <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        재시도 중...
+                      </span>
+                    ) : (
+                      '재시도'
+                    )}
+                  </button>
+                )}
               </li>
             ))}
           </ul>

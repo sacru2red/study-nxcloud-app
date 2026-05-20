@@ -86,7 +86,9 @@ export namespace ChatProvider {
       const context = relevantResults.map((r) => r.chunk_text).join('\n\n')
       try {
         answer = await LlmProvider.chat(question, context)
-      } catch {
+      } catch (error) {
+        console.error('chat error on llmProvider.chat', error)
+
         answer = '문서에서 확인 불가'
         relevantResults.length = 0
       }

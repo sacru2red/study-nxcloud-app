@@ -17,14 +17,26 @@ export namespace PdfWorkerProvider {
 
     await prisma.document.update({
       where: { documentId },
-      data: { indexStatus: 'PROCESSING' },
+      data: {
+        indexStatus: 'PROCESSING',
+        pageCount: 0,
+        chunkCount: 0,
+        indexedAt: null,
+      },
     })
 
     try {
       const buffer = await NextcloudProvider.getFile(doc.tenantId, doc.fileName)
       const pages = await extractPages(buffer)
       const chunks = chunkPages(pages)
+      const chunkProgressUpdateInterval = 20
 
+      await prisma.document.update({
+        where: { documentId },
+        data: { pageCount: pages.length },
+      })
+
+      let processedChunkCount = 0
       for (const chunk of chunks) {
         await prisma.documentChunk.create({
           data: {
@@ -35,6 +47,16 @@ export namespace PdfWorkerProvider {
             chunkText: chunk.text,
           },
         })
+        processedChunkCount += 1
+        if (
+          processedChunkCount % chunkProgressUpdateInterval === 0 ||
+          processedChunkCount === chunks.length
+        ) {
+          await prisma.document.update({
+            where: { documentId },
+            data: { chunkCount: processedChunkCount },
+          })
+        }
       }
 
       const createdChunks = await prisma.documentChunk.findMany({

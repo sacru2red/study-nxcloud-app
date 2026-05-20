@@ -22,9 +22,9 @@ function AppHeader() {
         <span className="rounded bg-gray-100 px-2 py-0.5 text-xs">{user.role}</span>
         <button
           onClick={doLogout}
-          className="rounded bg-red-50 px-3 py-1 text-sm text-red-600 hover:bg-red-100"
+          className="rounded bg-red-50 px-3 py-1 text-xs text-red-600 hover:bg-red-100"
         >
-          Logout
+          logout
         </button>
       </div>
     </header>
@@ -33,7 +33,7 @@ function AppHeader() {
 
 const rootRoute = createRootRoute({
   component: () => (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col max-h-screen overflow-auto">
       <AppHeader />
       <Outlet />
     </div>

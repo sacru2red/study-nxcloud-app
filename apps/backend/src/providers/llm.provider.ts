@@ -9,7 +9,8 @@ const SYSTEM_PROMPT = `당신은 문서 분석 어시스턴트입니다.
 export namespace LlmProvider {
   export const chat = async (question: string, context: string) => {
     const apiKey = process.env.OPENCODE_API_KEY
-    const model = process.env.LLM_MODEL || 'google/gemma-3-27b-it:free'
+    console.log('apiKey', apiKey)
+    const model = process.env.LLM_MODEL || 'minimax-m2.5-free'
 
     const userMessage = context
       ? `다음 문서 내용을 바탕으로 질문에 답변하세요.\n\n[문서 내용]\n${context}\n\n[질문]\n${question}`
@@ -34,6 +35,8 @@ export namespace LlmProvider {
         timeout: 30000,
       },
     )
+
+    console.log('chat response', response.data)
 
     return response.data.choices[0].message.content
   }

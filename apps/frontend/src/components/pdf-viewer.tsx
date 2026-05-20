@@ -1,22 +1,62 @@
-import { useState, useEffect } from 'react'
+import api from 'backend-sdk'
+import { useEffect, useState } from 'react'
+import { Document, Page, pdfjs } from 'react-pdf'
+import 'react-pdf/dist/Page/AnnotationLayer.css'
+import 'react-pdf/dist/Page/TextLayer.css'
+import { getConnection } from '../api/client'
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString()
 
 export interface PdfViewerProps {
-  ncDownloadUrl: string | null
+  fileId: string | null
   fileName: string | null
   targetPage?: number | null
 }
 
-export function PdfViewer({ ncDownloadUrl, fileName, targetPage }: PdfViewerProps) {
+const getAccessToken = () => {
+  const rawToken = localStorage.getItem('accessToken')
+  if (!rawToken) {
+    return null
+  }
+
+  try {
+    const parsedToken = JSON.parse(rawToken) as unknown
+    return typeof parsedToken === 'string' ? parsedToken : rawToken
+  } catch {
+    return rawToken
+  }
+}
+
+export function PdfViewer({ fileId, fileName, targetPage }: PdfViewerProps) {
   const [currentPage, setCurrentPage] = useState(1)
-  const [loadError, setLoadError] = useState(false)
+  const [totalPages, setTotalPages] = useState<number | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (targetPage && targetPage >= 1) {
-      setCurrentPage(targetPage)
+    if (!targetPage || targetPage < 1) {
+      return
     }
-  }, [targetPage])
 
-  if (!ncDownloadUrl || !fileName) {
+    setCurrentPage((previousPage) => {
+      if (totalPages) {
+        return Math.min(targetPage, totalPages)
+      }
+      return Math.max(1, targetPage)
+    })
+  }, [targetPage, totalPages])
+
+  useEffect(() => {
+    if (fileId) {
+      setCurrentPage(1)
+      setTotalPages(null)
+      setLoadError(null)
+    }
+  }, [fileId])
+
+  if (!fileId || !fileName) {
     return (
       <div className="flex flex-1 items-center justify-center text-gray-400">
         <div className="text-center">
@@ -44,8 +84,9 @@ export function PdfViewer({ ncDownloadUrl, fileName, targetPage }: PdfViewerProp
       <div className="flex flex-1 items-center justify-center text-gray-400">
         <div className="text-center">
           <p className="text-sm text-red-500">Failed to load PDF</p>
+          <p className="mt-1 text-xs text-gray-500">{loadError}</p>
           <button
-            onClick={() => setLoadError(false)}
+            onClick={() => setLoadError(null)}
             className="mt-2 text-xs text-blue-500 hover:underline"
           >
             Retry
@@ -55,17 +96,34 @@ export function PdfViewer({ ncDownloadUrl, fileName, targetPage }: PdfViewerProp
     )
   }
 
-  const pdfUrl = `${ncDownloadUrl}#page=${currentPage}`
+  const handleLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setTotalPages(numPages)
+    setCurrentPage((previousPage) => Math.min(previousPage, numPages))
+    setLoadError(null)
+  }
+
+  const handleLoadError = (error: Error) => {
+    setLoadError(error.message || 'Unknown PDF loading error')
+  }
+
+  const accessToken = getAccessToken()
+  const fileSource = {
+    url: getConnection().host + api.functional.files.content.path(fileId),
+    httpHeaders: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+  }
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex-1 bg-white">
-        <iframe
-          src={pdfUrl}
-          className="h-full w-full"
-          title={fileName}
-          onError={() => setLoadError(true)}
-        />
+      <div className="flex flex-1 items-start justify-center overflow-auto bg-gray-100 p-4">
+        <Document
+          file={fileSource}
+          onLoadSuccess={handleLoadSuccess}
+          onLoadError={handleLoadError}
+          loading={<p className="text-sm text-gray-500">Loading PDF...</p>}
+          error={<p className="text-sm text-red-500">Failed to load PDF</p>}
+        >
+          <Page pageNumber={currentPage} renderTextLayer={false} renderAnnotationLayer={false} />
+        </Document>
       </div>
       <div className="flex items-center justify-center gap-4 border-t bg-gray-50 px-4 py-2 text-xs text-gray-500">
         <button
@@ -75,10 +133,14 @@ export function PdfViewer({ ncDownloadUrl, fileName, targetPage }: PdfViewerProp
         >
           Previous
         </button>
-        <span>Page {currentPage}</span>
+        <span>
+          Page {currentPage}
+          {totalPages ? ` / ${totalPages}` : ''}
+        </span>
         <button
           onClick={() => setCurrentPage((p) => p + 1)}
-          className="rounded px-2 py-1 hover:bg-gray-200"
+          disabled={!totalPages || currentPage >= totalPages}
+          className="rounded px-2 py-1 hover:bg-gray-200 disabled:opacity-30"
         >
           Next
         </button>

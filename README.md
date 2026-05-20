@@ -114,7 +114,7 @@ tenants (tenant_id PK)
 [4] LLM 호출
     │ → System Prompt: "문서 내용만 근거로 답변. 없으면 '문서에서 확인 불가'"
     │ → User Message: [문서 내용] + [질문]
-    │ → model: google/gemma-3-27b-it:free
+    │ → model: minimax-m2.5-free
     ▼
 [5] 응답 + 근거 반환
     │ → answer: LLM 응답 텍스트
@@ -175,30 +175,30 @@ tenants (tenant_id PK)
 
 ### 기술 스택
 
-| Category     | Technology                        |
-| ------------ | --------------------------------- |
-| Monorepo     | Nx 22.7                           |
-| Backend      | NestJS 11 + Nestia 11             |
-| Frontend     | React 19 + Vite 8 + TailwindCSS 3 |
-| Database     | PostgreSQL 16 + pgvector          |
-| File Storage | Nextcloud (WebDAV + OCS API)      |
+| Category     | Technology                         |
+| ------------ | ---------------------------------- |
+| Monorepo     | Nx 22.7                            |
+| Backend      | NestJS 11 + Nestia 11              |
+| Frontend     | React 19 + Vite 8 + TailwindCSS 3  |
+| Database     | PostgreSQL 16 + pgvector           |
+| File Storage | Nextcloud (WebDAV + OCS API)       |
 | Embedding    | Gemini gemini-embedding-001 (768d) |
-| LLM          | opencode zen                      |
-| Auth         | JWT (bcrypt + @nestjs/jwt)        |
-| State        | jotai + @tanstack/react-query     |
-| Router       | @tanstack/react-router            |
-| SDK          | typia + @nestia/core              |
+| LLM          | opencode zen                       |
+| Auth         | JWT (bcrypt + @nestjs/jwt)         |
+| State        | jotai + @tanstack/react-query      |
+| Router       | @tanstack/react-router             |
+| SDK          | typia + @nestia/core               |
 
 ## 문서
 
-| 문서 | 설명 |
-| ---- | ---- |
-| [RESULT_OUTLINE.md](./RESULT_OUTLINE.md) | 과제 요구사항 대비 구현·진행·제출 준비 현황 |
-| [docs/submission-tasks.md](./docs/submission-tasks.md) | 제출·시연 할 일과 방법 (대화 정리) |
-| [docs/development.md](./docs/development.md) | 로컬 환경 설정, 개발 서버, E2E 테스트 |
+| 문서                                                         | 설명                                                |
+| ------------------------------------------------------------ | --------------------------------------------------- |
+| [RESULT_OUTLINE.md](./RESULT_OUTLINE.md)                     | 과제 요구사항 대비 구현·진행·제출 준비 현황         |
+| [docs/submission-tasks.md](./docs/submission-tasks.md)       | 제출·시연 할 일과 방법 (대화 정리)                  |
+| [docs/development.md](./docs/development.md)                 | 로컬 환경 설정, 개발 서버, E2E 테스트               |
 | [docs/deploy-oracle-cloud.md](./docs/deploy-oracle-cloud.md) | Oracle Cloud 무료 VM 모놀리식 배포 (Docker Compose) |
-| [docs/api-examples.md](./docs/api-examples.md) | API 응답 예시 |
-| [docs/nestia-guide.md](./docs/nestia-guide.md) | Nestia 사용 가이드 |
+| [docs/api-examples.md](./docs/api-examples.md)               | API 응답 예시                                       |
+| [docs/nestia-guide.md](./docs/nestia-guide.md)               | Nestia 사용 가이드                                  |
 
 ## API Endpoints
 

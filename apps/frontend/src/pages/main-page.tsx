@@ -24,6 +24,21 @@ export function MainPage() {
     setTargetPage(null)
   }
 
+  const handleDownloadFile = (downloadUrl: string | null, fileName: string) => {
+    if (!downloadUrl) {
+      return
+    }
+
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = fileName
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const { data: indexStatusData } = useIndexStatus(
     selectedFileId,
     selectedDoc?.indexStatus === 'PENDING' || selectedDoc?.indexStatus === 'PROCESSING',
@@ -34,8 +49,8 @@ export function MainPage() {
   if (!isAuth) return <Navigate to="/login" />
 
   return (
-    <div className="flex flex-1">
-      <aside className="w-72 flex-shrink-0 overflow-y-auto border-r bg-gray-50 p-4">
+    <div className="flex flex-[0] h-[1px]">
+      <aside className="w-72 flex-shrink-0 overflow-y-auto border-r bg-gray-50 p-4 flex flex-col h-auto max-h-screen">
         <input
           ref={fileInputRef}
           type="file"
@@ -119,6 +134,17 @@ export function MainPage() {
                     {(doc.fileSize / 1024).toFixed(1)} KB
                   </span>
                 </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    handleDownloadFile(doc.ncDownloadUrl, doc.fileName)
+                  }}
+                  disabled={!doc.ncDownloadUrl}
+                  className="mt-2 w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  다운로드
+                </button>
               </li>
             ))}
           </ul>
@@ -126,7 +152,7 @@ export function MainPage() {
       </aside>
 
       <PdfViewer
-        ncDownloadUrl={selectedDoc?.ncDownloadUrl ?? null}
+        fileId={selectedDoc?.documentId ?? null}
         fileName={selectedDoc?.fileName ?? null}
         targetPage={targetPage}
       />

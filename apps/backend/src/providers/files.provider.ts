@@ -89,4 +89,22 @@ export namespace FilesProvider {
       chunkCount: doc.chunkCount,
     }
   }
+
+  export const getFileContent = async (documentId: string, tenantId: string) => {
+    const doc = await prisma.document.findFirst({
+      where: { documentId, tenantId },
+    })
+
+    if (!doc || !doc.ncPath) {
+      throw new Error('Document not found')
+    }
+
+    const fileBuffer = await NextcloudProvider.getFile(tenantId, doc.fileName)
+
+    return {
+      fileName: doc.fileName,
+      mimeType: doc.mimeType ?? 'application/pdf',
+      buffer: fileBuffer,
+    }
+  }
 }

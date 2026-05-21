@@ -51,9 +51,17 @@ export namespace ChatProvider {
       where: { documentId, userId },
     })
     if (!session) {
-      session = await prisma.chatSession.create({
-        data: { tenantId, userId, documentId },
-      })
+      try {
+        session = await prisma.chatSession.create({
+          data: { tenantId, userId, documentId },
+        })
+      } catch {
+        // Race condition: concurrent request created the session first — re-fetch
+        session = await prisma.chatSession.findFirst({
+          where: { documentId, userId },
+        })
+        if (!session) throw new Error('Failed to create chat session')
+      }
     }
 
     let questionVector: number[]
@@ -117,6 +125,13 @@ export namespace ChatProvider {
       const context = relevantResults.map((r) => r.chunk_text).join('\n\n')
       try {
         answer = await LlmProvider.chat(question, context)
+        sources = relevantResults.map((r) => ({
+          fileName: r.file_name,
+          pageNo: r.page_no,
+          paragraphNo: r.paragraph_no,
+          text: r.chunk_text.slice(0, 200),
+          similarity: Math.round(r.similarity * 1000) / 1000,
+        }))
       } catch (error) {
         if (error instanceof LlmChatError) {
           diagnostics = {
@@ -158,14 +173,8 @@ export namespace ChatProvider {
         }
 
         answer = '문서에서 확인 불가'
+        sources = []
       }
-      sources = relevantResults.map((r) => ({
-        fileName: r.file_name,
-        pageNo: r.page_no,
-        paragraphNo: r.paragraph_no,
-        text: r.chunk_text.slice(0, 200),
-        similarity: Math.round(r.similarity * 1000) / 1000,
-      }))
     }
 
     await prisma.chatMessage.createMany({
@@ -178,6 +187,14 @@ export namespace ChatProvider {
           sourcesJson: JSON.stringify(sources),
         },
       ],
+    })
+
+    console.log('[ChatProvider] Returning response:', {
+      answerPreview: answer.substring(0, 80),
+      sourcesCount: sources.length,
+      sessionId: session.sessionId,
+      hasDiagnostics: !!diagnostics,
+      diagnosticsReason: diagnostics?.reason,
     })
 
     return { answer, sources, sessionId: session.sessionId, diagnostics }

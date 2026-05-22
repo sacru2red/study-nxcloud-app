@@ -92,7 +92,16 @@ npx nx e2e frontend-e2e
 
 Playwright가 `backend:build` 후 `node dist/apps/backend/main.js`(3000)와 `npx vite`(4200, `/api` 프록시)를 자동으로 띄웁니다. 로컬에서 이미 서버가 떠 있으면 재사용합니다(`CI`가 설정되면 매번 새로 기동).
 
-`prepare-e2e`는 Docker(Postgres + Nextcloud), DB push, seed를 실행합니다. `.env`에 API 키가 설정되어 있어야 합니다.
+`prepare-e2e`는 Docker(Postgres + Nextcloud), **앱 DB 정리**(`infra/ensure-app-database.sh`), DB push, seed를 실행합니다. `.env`에 API 키가 설정되어 있어야 합니다.
+
+Postgres는 **앱(`nxcloud_app`)** 과 **Nextcloud(`nextcloud`)** 가 서로 다른 데이터베이스를 사용합니다. 예전 볼륨에 `oc_*`가 `nxcloud_app`에 남아 있으면 `prisma db push`가 실패합니다. 그때는 컨테이너·볼륨을 내린 뒤 다시 올리세요:
+
+```bash
+docker compose -f infra/docker-compose.yml down -v
+docker compose -f infra/docker-compose.yml up -d
+./infra/init-nextcloud.sh
+npx nx run backend:prepare-e2e
+```
 
 `prepare-e2e:reset`은 `docker compose down -v`를 먼저 실행해 Postgres/Nextcloud 볼륨을 삭제한 뒤 다시 기동합니다. 따라서 DB 데이터와 업로드 파일(Nextcloud 저장 파일)도 함께 초기화됩니다.
 

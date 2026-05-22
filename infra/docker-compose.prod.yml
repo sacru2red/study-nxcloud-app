@@ -16,7 +16,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-nxcloud_app}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init-app.sql:ro
+      - ./postgres/02-create-nextcloud-db.sql:/docker-entrypoint-initdb.d/02-create-nextcloud-db.sql:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-nxcloud}']
       interval: 5s
@@ -33,7 +34,7 @@ services:
       NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
       NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:?set NEXTCLOUD_ADMIN_PASSWORD in .env}
       POSTGRES_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_DB:-nxcloud_app}
+      POSTGRES_DB: nextcloud
       POSTGRES_USER: ${POSTGRES_USER:-nxcloud}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:

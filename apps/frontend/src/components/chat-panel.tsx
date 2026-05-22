@@ -41,10 +41,29 @@ export function ChatPanel({
   const [input, setInput] = useState('')
   const chatMutation = useChat(fileId ?? '')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const lastUserMessageRef = useRef<HTMLDivElement>(null)
+
+  const lastUserMessageIndex = messages.reduce(
+    (lastIndex, message, index) => (message.role === 'user' ? index : lastIndex),
+    -1,
+  )
 
   useEffect(() => {
+    if (messages.length === 0) return
+
+    if (chatMutation.isPending) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      return
+    }
+
+    const lastMessage = messages[messages.length - 1]
+    if (lastMessage?.role === 'assistant' && lastUserMessageRef.current) {
+      lastUserMessageRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      return
+    }
+
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, chatMutation.isPending])
 
   const isDisabled = !fileId || indexStatus !== 'COMPLETED'
 
@@ -150,6 +169,7 @@ export function ChatPanel({
               <div key={i}>
                 <div className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
                   <div
+                    ref={i === lastUserMessageIndex ? lastUserMessageRef : undefined}
                     className={
                       msg.role === 'user'
                         ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-blue-500 px-4 py-2 text-sm text-white'

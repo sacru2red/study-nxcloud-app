@@ -18,6 +18,19 @@ async function screenshot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: join(SCREENSHOTS_DIR, name), fullPage: false })
 }
 
+/** 답변·출처 카드로 스크롤이 밀린 뒤에도 데모 스샷에 질문이 보이도록 한다. */
+async function scrollChatQuestionIntoView(page: Page, question: string): Promise<void> {
+  const userBubble = page
+    .locator('.rounded-2xl.rounded-br-sm.bg-blue-500')
+    .filter({ hasText: question })
+    .last()
+  await expect(userBubble).toBeVisible({ timeout: 10_000 })
+  await userBubble.evaluate((element) => {
+    element.scrollIntoView({ block: 'start', inline: 'nearest' })
+  })
+  await page.waitForTimeout(400)
+}
+
 async function getAccessTokenFromLocalStorage(page: Page): Promise<string> {
   const raw = await page.evaluate(() => localStorage.getItem('accessToken'))
   if (!raw) {
@@ -301,11 +314,13 @@ test('Screenshot 05 - 1 - Chat Question', async ({ page }) => {
   }
   await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
   await askChatExpectingSources(page, RAG_QUESTION, uploadedDocumentId, DEMO_PDF_NAME)
+  await scrollChatQuestionIntoView(page, RAG_QUESTION)
   await screenshot(page, '05-1-chat-with-sources.png')
 
   await page.locator('.rounded-lg.border.border-gray-200.bg-gray-50').first().click()
   await page.locator('span:has-text("Page")').last().waitFor({ state: 'visible', timeout: 10_000 })
-  await page.waitForTimeout(1000)
+  await scrollChatQuestionIntoView(page, RAG_QUESTION)
+  await page.waitForTimeout(600)
   await screenshot(page, '05-1-1-source-page-nav.png')
 })
 
@@ -315,7 +330,9 @@ test('Screenshot 05 - 2 - Chat Question', async ({ page }) => {
     throw new Error('uploadedDocumentId is not set from upload step')
   }
   await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
-  await askChat(page, "개요페이지는 몇 페이지야")
+  const overviewQuestion = '개요페이지는 몇 페이지야'
+  await askChat(page, overviewQuestion)
+  await scrollChatQuestionIntoView(page, overviewQuestion)
   await screenshot(page, '05-2-chat-with-sources.png')
 })
 

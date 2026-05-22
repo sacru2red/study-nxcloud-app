@@ -76,15 +76,13 @@ export function FolderChatPanel({ folderId, tenantId }: FolderChatPanelProps) {
     <div className="flex min-h-0 flex-1 flex-col bg-white">
       <div className="border-b px-4 py-3">
         <h2 className="text-sm font-semibold text-gray-800">Folder AI Chat</h2>
-        <p className="mt-0.5 text-xs text-gray-400">
-          folder: {folderId} · tenant: {tenantId.slice(0, 8)}…
-        </p>
+        <p className="mt-0.5 text-xs text-gray-400">폴더: {folderId}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <p className="text-sm text-gray-400">
-            같은 folderId로 업로드된 문서들을 검색해 답변합니다.
+            이 폴더에 속한 PDF들을 함께 검색해 답변합니다.
           </p>
         ) : (
           <div className="space-y-4">

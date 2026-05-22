@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useChat } from '../queries'
 import { SourceCard } from './source-card'
 import type { ChatSource } from './source-card'
+import { IndexProgressDisplay, type IndexProgressData } from './index-progress-display'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -25,10 +26,17 @@ export interface ChatPanelProps {
   fileId: string | null
   fileName: string | null
   indexStatus: string | null
+  indexProgress?: IndexProgressData | null
   onPageNavigate?: (pageNo: number) => void
 }
 
-export function ChatPanel({ fileId, fileName, indexStatus, onPageNavigate }: ChatPanelProps) {
+export function ChatPanel({
+  fileId,
+  fileName,
+  indexStatus,
+  indexProgress,
+  onPageNavigate,
+}: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const chatMutation = useChat(fileId ?? '')
@@ -86,6 +94,14 @@ export function ChatPanel({ fileId, fileName, indexStatus, onPageNavigate }: Cha
       <div className="border-b px-4 py-3">
         <h2 className="text-sm font-semibold text-gray-800">AI Chat</h2>
         {fileName && <p className="mt-0.5 text-xs text-gray-400">{fileName}</p>}
+        {indexProgress &&
+          (indexStatus === 'PENDING' ||
+            indexStatus === 'PROCESSING' ||
+            indexStatus === 'FAILED') && (
+            <div className="mt-2">
+              <IndexProgressDisplay progress={indexProgress} />
+            </div>
+          )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -114,10 +130,14 @@ export function ChatPanel({ fileId, fileName, indexStatus, onPageNavigate }: Cha
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                       />
                     </svg>
-                    <p className="text-sm text-gray-400">{getPlaceholder()}</p>
+                    <p className="text-sm text-gray-400">
+                      {indexProgress?.message ?? getPlaceholder()}
+                    </p>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400">{getPlaceholder()}</p>
+                  <p className="text-sm text-gray-400">
+                    {indexProgress?.message ?? getPlaceholder()}
+                  </p>
                 )}
               </div>
             ) : (

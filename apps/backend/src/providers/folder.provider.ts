@@ -1,6 +1,7 @@
 import { prisma } from '../prisma'
 import { EmbeddingProvider } from './embedding.provider'
 import { LlmProvider } from './llm.provider'
+import { normalizeUploadFileName } from '../common/decode-upload-filename'
 
 const SIMILARITY_THRESHOLD = 0.3
 
@@ -80,7 +81,7 @@ export namespace FolderProvider {
       answer = await LlmProvider.chat(question, context)
       sources = relevantResults.map((r) => ({
         documentId: r.document_id,
-        fileName: r.file_name,
+        fileName: normalizeUploadFileName(r.file_name),
         pageNo: r.page_no,
         paragraphNo: r.paragraph_no,
         text: r.chunk_text.slice(0, 200),

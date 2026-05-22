@@ -11,7 +11,9 @@ const USE_MOCK_EMBEDDINGS = process.env['MOCK_EMBEDDINGS'] === 'true'
 const MAX_EMBEDDING_RETRIES = 8
 const MAX_FALLBACK_RETRIES = 4
 const CHUNK_EMBED_MAX_ATTEMPTS = 12
-const CHUNK_EMBED_DELAY_MS = USE_MOCK_EMBEDDINGS ? 0 : 1_200
+// 청크마다 Gemini embed API를 연속 호출하면 429(RPM/할당량)가 잦아지므로, 요청 사이에 고정 대기.
+// API 응답 시간과 별개인 스로틀이다. MOCK_EMBEDDINGS=true면 E2E용으로 0.
+const CHUNK_EMBED_DELAY_MS = USE_MOCK_EMBEDDINGS ? 0 : 1_000
 
 interface GeminiEmbedResponse {
   embedding: { values: number[] }

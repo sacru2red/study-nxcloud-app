@@ -1,12 +1,15 @@
-import { useState, useRef } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { Navigate } from '@tanstack/react-router'
 import { useAtom } from 'jotai'
 import { userAtom, isAuthenticatedAtom } from '../stores/auth'
 import { selectedFileIdAtom } from '../stores/files'
-import { useFiles, useUploadFile, useIndexStatus, useRetryIndex } from '../queries'
+import { useFiles, useUploadFile, useProcessingIndexStatuses, useRetryIndex } from '../queries'
 import { PdfViewer } from '../components/pdf-viewer'
 import { ChatPanel } from '../components/chat-panel'
 import { FolderChatPanel } from '../components/folder-chat-panel'
+import { DocumentFileListItem } from '../components/document-file-list-item'
+import { groupDocumentsByFolder } from '../lib/group-documents-by-folder'
+import { legacyStatusFromProgress } from '../lib/index-status-label'
 
 type ChatMode = 'document' | 'folder'
 
@@ -16,7 +19,7 @@ export function MainPage() {
   const [selectedFileId, setSelectedFileId] = useAtom(selectedFileIdAtom)
   const [targetPage, setTargetPage] = useState<number | null>(null)
   const [chatMode, setChatMode] = useState<ChatMode>('document')
-  const [folderId, setFolderId] = useState('demo-folder')
+  const [folderName, setFolderName] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: docs, isLoading } = useFiles(user?.tenantId)
@@ -25,9 +28,19 @@ export function MainPage() {
 
   const selectedDoc = docs?.find((d) => d.documentId === selectedFileId)
 
-  const handleSelectFile = (docId: string) => {
+  const folderGroups = useMemo(() => groupDocumentsByFolder(docs ?? []), [docs])
+
+  const handleSelectFile = (docId: string, docFolderId: string | null) => {
     setSelectedFileId(docId)
     setTargetPage(null)
+    if (docFolderId?.trim()) {
+      setFolderName(docFolderId.trim())
+    }
+  }
+
+  const handleSelectFolder = (name: string) => {
+    setFolderName(name)
+    setChatMode('folder')
   }
 
   const handleDownloadFile = (downloadUrl: string | null, fileName: string) => {
@@ -45,12 +58,29 @@ export function MainPage() {
     document.body.removeChild(link)
   }
 
-  const { data: indexStatusData } = useIndexStatus(
-    selectedFileId,
-    selectedDoc?.indexStatus === 'PENDING' || selectedDoc?.indexStatus === 'PROCESSING',
+  const processingDocumentIds = useMemo(
+    () =>
+      docs
+        ?.filter(
+          (d) =>
+            d.indexStatus === 'PENDING' ||
+            d.indexStatus === 'PROCESSING' ||
+            d.indexStatus === 'FAILED',
+        )
+        .map((d) => d.documentId) ?? [],
+    [docs],
   )
 
-  const currentIndexStatus = indexStatusData?.status ?? selectedDoc?.indexStatus ?? null
+  const progressByDocumentId = useProcessingIndexStatuses(processingDocumentIds)
+
+  const selectedProgress = selectedFileId
+    ? progressByDocumentId.get(selectedFileId)
+    : undefined
+
+  const currentIndexStatus = legacyStatusFromProgress(
+    selectedProgress,
+    selectedDoc?.indexStatus ?? '',
+  )
 
   if (!isAuth) return <Navigate to="/login" />
 
@@ -67,130 +97,103 @@ export function MainPage() {
             if (file) {
               uploadMutation.mutate({
                 file,
-                folderId: folderId.trim() || undefined,
+                folderId: folderName.trim() || undefined,
               })
             }
             e.target.value = ''
           }}
         />
-        <label className="mb-2 block text-xs text-gray-500">
-          업로드 folderId (선택)
-          <input
-            type="text"
-            value={folderId}
-            onChange={(event) => setFolderId(event.target.value)}
-            className="mt-1 w-full rounded border px-2 py-1 text-sm"
-            placeholder="demo-folder"
-          />
-        </label>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploadMutation.isPending}
-          className="mb-4 flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {uploadMutation.isPending ? (
-            <span className="flex items-center gap-2">
-              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
-              </svg>
-              Uploading...
-            </span>
-          ) : (
-            '+ Upload PDF'
+        <section className="mb-4 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            PDF 업로드
+          </h2>
+          <label className="mb-3 block text-xs text-gray-600">
+            폴더 이름 (선택)
+            <input
+              type="text"
+              value={folderName}
+              onChange={(event) => setFolderName(event.target.value)}
+              className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm text-gray-800"
+              placeholder="예: 2024-계약"
+            />
+          </label>
+          <p className="mb-3 text-[11px] leading-relaxed text-gray-400">
+            같은 폴더 이름으로 올린 PDF는 아래에서 한 묶음으로 보이고, 폴더 채팅에서 함께 검색됩니다.
+          </p>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadMutation.isPending}
+            className="flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {uploadMutation.isPending ? '업로드 중...' : '+ Upload PDF'}
+          </button>
+          {uploadMutation.isError && (
+            <div className="mt-2 rounded bg-red-50 p-2 text-xs text-red-600">업로드 실패</div>
           )}
-        </button>
-
-        {uploadMutation.isError && (
-          <div className="mb-3 rounded bg-red-50 p-2 text-xs text-red-600">Upload failed</div>
-        )}
+        </section>
 
         {isLoading ? (
           <div className="py-8 text-center text-sm text-gray-400">Loading...</div>
         ) : !docs || docs.length === 0 ? (
-          <div className="py-8 text-center text-sm text-gray-400">No files yet</div>
+          <div className="rounded-lg border border-dashed border-gray-200 bg-white py-8 text-center text-sm text-gray-400">
+            아직 파일이 없습니다
+          </div>
         ) : (
-          <ul className="space-y-2">
-            {docs.map((doc) => (
-              <li
-                key={doc.documentId}
-                data-document-id={doc.documentId}
-                onClick={() => handleSelectFile(doc.documentId)}
-                className={
-                  'cursor-pointer rounded-lg border bg-white p-3 text-sm hover:shadow-sm' +
-                  (selectedFileId === doc.documentId ? 'border-blue-400 ring-1 ring-blue-200' : '')
-                }
-              >
-                <p className="truncate font-medium text-gray-800">{doc.fileName}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <span
-                    className={
-                      'inline-block rounded px-1.5 py-0.5 text-xs font-medium' +
-                      (doc.indexStatus === 'COMPLETED'
-                        ? 'bg-green-100 text-green-700'
-                        : doc.indexStatus === 'PENDING'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : doc.indexStatus === 'PROCESSING'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-red-100 text-red-700')
-                    }
-                  >
-                    {selectedFileId === doc.documentId && indexStatusData?.status
-                      ? indexStatusData.status
-                      : doc.indexStatus}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {(doc.fileSize / 1024).toFixed(1)} KB
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    handleDownloadFile(doc.ncDownloadUrl, doc.fileName)
-                  }}
-                  disabled={!doc.ncDownloadUrl}
-                  className="mt-2 w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          <div className="space-y-3">
+            {folderGroups.map((group) => {
+              const isActiveFolder =
+                group.folderKey !== null && folderName.trim() === group.folderKey
+
+              return (
+                <section
+                  key={group.folderKey ?? '__unfiled__'}
+                  className={
+                    'overflow-hidden rounded-lg border bg-white shadow-sm' +
+                    (isActiveFolder ? ' border-blue-300 ring-1 ring-blue-100' : ' border-gray-200')
+                  }
                 >
-                  다운로드
-                </button>
-                {doc.indexStatus !== 'COMPLETED' && (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      retryMutation.mutate(doc.documentId)
-                    }}
-                    disabled={retryMutation.isPending}
-                    className="mt-1 w-full rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {retryMutation.isPending ? (
-                      <span className="flex items-center justify-center gap-1">
-                        <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        재시도 중...
+                  {group.folderKey !== null ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectFolder(group.label)}
+                      className="flex w-full items-center justify-between border-b border-gray-100 bg-gray-50 px-3 py-2 text-left hover:bg-gray-100"
+                    >
+                      <span className="truncate text-sm font-semibold text-gray-800">
+                        {group.label}
                       </span>
-                    ) : (
-                      '재시도'
-                    )}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
+                      <span className="ml-2 shrink-0 text-xs text-gray-500">{group.documents.length}개</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-3 py-2">
+                      <span className="text-sm font-semibold text-gray-600">{group.label}</span>
+                      <span className="text-xs text-gray-500">{group.documents.length}개</span>
+                    </div>
+                  )}
+                  <ul className="space-y-1.5 p-2">
+                    {group.documents.map((doc) => (
+                      <DocumentFileListItem
+                        key={doc.documentId}
+                        doc={doc}
+                        isSelected={selectedFileId === doc.documentId}
+                        displayIndexStatus={legacyStatusFromProgress(
+                          progressByDocumentId.get(doc.documentId),
+                          doc.indexStatus,
+                        )}
+                        indexProgress={progressByDocumentId.get(doc.documentId)}
+                        isRetryPending={retryMutation.isPending}
+                        onSelect={(documentId) =>
+                          handleSelectFile(documentId, doc.folderId)
+                        }
+                        onDownload={handleDownloadFile}
+                        onRetry={(documentId) => retryMutation.mutate(documentId)}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              )
+            })}
+          </div>
         )}
       </aside>
 
@@ -233,11 +236,18 @@ export function MainPage() {
           <ChatPanel
             fileId={selectedFileId}
             fileName={selectedDoc?.fileName ?? null}
-            indexStatus={currentIndexStatus}
+            indexStatus={currentIndexStatus || null}
+            indexProgress={selectedProgress}
             onPageNavigate={(page) => setTargetPage(page)}
           />
         ) : user?.tenantId ? (
-          <FolderChatPanel folderId={folderId.trim() || 'demo-folder'} tenantId={user.tenantId} />
+          folderName.trim() ? (
+            <FolderChatPanel folderId={folderName.trim()} tenantId={user.tenantId} />
+          ) : (
+            <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-gray-500">
+              왼쪽에서 폴더 이름을 입력하거나, 폴더 카드 제목을 클릭한 뒤 질문하세요.
+            </div>
+          )
         ) : null}
       </div>
     </div>

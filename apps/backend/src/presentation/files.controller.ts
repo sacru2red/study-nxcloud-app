@@ -8,6 +8,7 @@ import { TenantGuard } from '../common/guards/tenant.guard'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { IJwtPayload } from './auth.dto'
 import { FilesDto } from './files.dto'
+import { normalizeUploadFileName } from '../common/decode-upload-filename'
 
 @Controller('tenants/:tenantId/files')
 @UseGuards(JwtAuthGuard, TenantGuard)
@@ -23,7 +24,7 @@ export class FilesController {
       user.tenantId,
       user.userId,
       {
-        originalname: file.name,
+        originalname: normalizeUploadFileName(file.name),
         buffer: Buffer.from(await file.arrayBuffer()),
         mimetype: file.type,
         size: file.size,

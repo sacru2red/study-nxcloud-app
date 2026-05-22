@@ -1,4 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { IndexProgressData } from '../components/index-progress-display'
 import { getConnection } from '../api/client'
 import { useSetAtom } from 'jotai'
 import { tokenAtom, userAtom } from '../stores/auth'
@@ -135,6 +137,47 @@ export function useRetryIndex() {
   })
 }
 
+function toIndexProgress(
+  data: Awaited<ReturnType<typeof api.functional.files.index_status.indexStatus>>,
+): IndexProgressData {
+  return {
+    phase: data.phase,
+    progressPercent: data.progressPercent,
+    message: data.message,
+    totalChunks: data.totalChunks,
+    embeddedChunks: data.embeddedChunks,
+    pageCount: data.pageCount,
+  }
+}
+
+/** 인덱싱 중·실패·대기 문서마다 index-status 폴링 (2초) */
+export function useProcessingIndexStatuses(documentIds: string[]) {
+  const queries = useQueries({
+    queries: documentIds.map((documentId) => ({
+      queryKey: ['index-status', documentId] as const,
+      queryFn: () => api.functional.files.index_status.indexStatus(getConnection(), documentId),
+      refetchInterval: (query: { state: { data?: { status: string } } }) => {
+        const status = query.state.data?.status
+        if (status === 'COMPLETED' || status === 'FAILED') return false
+        return 2000
+      },
+    })),
+  })
+
+  const progressByDocumentId = useMemo(() => {
+    const map = new Map<string, IndexProgressData>()
+    documentIds.forEach((documentId, index) => {
+      const data = queries[index]?.data
+      if (data) {
+        map.set(documentId, toIndexProgress(data))
+      }
+    })
+    return map
+  }, [documentIds, queries])
+
+  return progressByDocumentId
+}
+
 export function useIndexStatus(fileId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['index-status', fileId] as const,
@@ -146,9 +189,11 @@ export function useIndexStatus(fileId: string | null, enabled: boolean) {
       return api.functional.files.index_status.indexStatus(getConnection(), fileIdFromQuery)
     },
     enabled: !!fileId && enabled,
-    refetchInterval: (query) =>
-      query.state.data?.status === 'COMPLETED' || query.state.data?.status === 'FAILED'
-        ? false
-        : 5000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      if (status === 'COMPLETED') return false
+      if (status === 'FAILED') return false
+      return 2000
+    },
   })
 }

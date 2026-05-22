@@ -3,6 +3,8 @@ import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { prisma } from '../prisma'
 import { NextcloudProvider } from './nextcloud.provider'
 import { PdfWorkerProvider } from './pdf-worker.provider'
+import { normalizeUploadFileName } from '../common/decode-upload-filename'
+import { buildIndexProgressSnapshot } from '../common/index-status.util'
 
 export namespace FilesProvider {
   const toResponse = (doc: Document) => {
@@ -18,7 +20,7 @@ export namespace FilesProvider {
       documentId: doc.documentId,
       tenantId: doc.tenantId,
       folderId: doc.folderId ?? null,
-      fileName: doc.fileName,
+      fileName: normalizeUploadFileName(doc.fileName),
       ncPath,
       ncDownloadUrl,
       fileSize: Number(doc.fileSize),
@@ -42,9 +44,10 @@ export namespace FilesProvider {
     },
     folderId?: string,
   ) => {
+    const fileName = normalizeUploadFileName(file.originalname)
     const ncResult = await NextcloudProvider.uploadFile(
       tenantId,
-      file.originalname,
+      fileName,
       file.buffer,
       file.mimetype,
     )
@@ -55,7 +58,7 @@ export namespace FilesProvider {
         ownerUserId,
         folderId: folderId ?? null,
         ncFileId: ncResult.ncFileId,
-        fileName: file.originalname,
+        fileName,
         ncPath: ncResult.ncPath,
         mimeType: file.mimetype,
         fileSize: BigInt(file.size),
@@ -82,11 +85,10 @@ export namespace FilesProvider {
     const doc = await prisma.document.findFirst({
       where: { documentId, tenantId },
     })
-    if (!doc) throw new Error('Document not found')
+    if (!doc) throw new NotFoundException('Document not found')
+    const snapshot = await buildIndexProgressSnapshot(doc)
     return {
-      documentId: doc.documentId,
-      status: doc.indexStatus,
-      pageCount: doc.pageCount,
+      ...snapshot,
       chunkCount: doc.chunkCount,
     }
   }
@@ -103,23 +105,57 @@ export namespace FilesProvider {
     const fileBuffer = await NextcloudProvider.getFile(tenantId, doc.fileName)
 
     return {
-      fileName: doc.fileName,
+      fileName: normalizeUploadFileName(doc.fileName),
       mimeType: doc.mimeType ?? 'application/pdf',
       buffer: fileBuffer,
     }
   }
 
-  export const retryIndex = async (documentId: string, tenantId: string): Promise<{ documentId: string; status: string }> => {
+  export const retryIndex = async (
+    documentId: string,
+    tenantId: string,
+  ): Promise<{ documentId: string; status: string; resumed: boolean }> => {
     const doc = await prisma.document.findFirst({
       where: { documentId, tenantId },
     })
     if (!doc) throw new NotFoundException('Document not found')
-    if (doc.indexStatus === 'COMPLETED') throw new BadRequestException('Cannot retry a completed document')
+    if (doc.indexStatus === 'COMPLETED') {
+      throw new BadRequestException('Cannot retry a completed document')
+    }
 
-    await prisma.documentChunk.deleteMany({
-      where: { documentId },
-    })
+    const totalChunks = await prisma.documentChunk.count({ where: { documentId } })
+    const embeddedRows = await prisma.$queryRaw<Array<{ count: number }>>`
+      SELECT COUNT(*)::int AS count
+      FROM document_chunks
+      WHERE document_id = ${documentId}::uuid
+        AND embedding IS NOT NULL
+    `
+    const embeddedChunks = embeddedRows[0]?.count ?? 0
 
+    if (totalChunks > 0 && embeddedChunks >= totalChunks) {
+      await prisma.document.update({
+        where: { documentId },
+        data: {
+          indexStatus: 'COMPLETED',
+          chunkCount: totalChunks,
+          indexedAt: new Date(),
+        },
+      })
+      return { documentId, status: 'COMPLETED', resumed: false }
+    }
+
+    if (totalChunks > 0) {
+      await prisma.document.update({
+        where: { documentId },
+        data: { indexStatus: 'PROCESSING' },
+      })
+      PdfWorkerProvider.resumeDocument(documentId).catch((err) => {
+        console.error(`[PdfWorker] Resume failed for document ${documentId}:`, err)
+      })
+      return { documentId, status: 'PROCESSING', resumed: true }
+    }
+
+    await prisma.documentChunk.deleteMany({ where: { documentId } })
     await prisma.document.update({
       where: { documentId },
       data: {
@@ -134,6 +170,6 @@ export namespace FilesProvider {
       console.error(`[PdfWorker] Retry failed for document ${documentId}:`, err)
     })
 
-    return { documentId, status: 'PENDING' }
+    return { documentId, status: 'PENDING', resumed: false }
   }
 }

@@ -6,12 +6,17 @@ import { selectedFileIdAtom } from '../stores/files'
 import { useFiles, useUploadFile, useIndexStatus, useRetryIndex } from '../queries'
 import { PdfViewer } from '../components/pdf-viewer'
 import { ChatPanel } from '../components/chat-panel'
+import { FolderChatPanel } from '../components/folder-chat-panel'
+
+type ChatMode = 'document' | 'folder'
 
 export function MainPage() {
   const [isAuth] = useAtom(isAuthenticatedAtom)
   const [user] = useAtom(userAtom)
   const [selectedFileId, setSelectedFileId] = useAtom(selectedFileIdAtom)
   const [targetPage, setTargetPage] = useState<number | null>(null)
+  const [chatMode, setChatMode] = useState<ChatMode>('document')
+  const [folderId, setFolderId] = useState('demo-folder')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: docs, isLoading } = useFiles(user?.tenantId)
@@ -60,11 +65,24 @@ export function MainPage() {
           onChange={(e) => {
             const file = e.target.files?.[0]
             if (file) {
-              uploadMutation.mutate(file)
+              uploadMutation.mutate({
+                file,
+                folderId: folderId.trim() || undefined,
+              })
             }
             e.target.value = ''
           }}
         />
+        <label className="mb-2 block text-xs text-gray-500">
+          업로드 folderId (선택)
+          <input
+            type="text"
+            value={folderId}
+            onChange={(event) => setFolderId(event.target.value)}
+            className="mt-1 w-full rounded border px-2 py-1 text-sm"
+            placeholder="demo-folder"
+          />
+        </label>
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadMutation.isPending}
@@ -176,18 +194,52 @@ export function MainPage() {
         )}
       </aside>
 
-      <PdfViewer
-        fileId={selectedDoc?.documentId ?? null}
-        fileName={selectedDoc?.fileName ?? null}
-        targetPage={targetPage}
-      />
+      {chatMode === 'document' ? (
+        <PdfViewer
+          fileId={selectedDoc?.documentId ?? null}
+          fileName={selectedDoc?.fileName ?? null}
+          targetPage={targetPage}
+        />
+      ) : (
+        <div className="flex flex-1 items-center justify-center bg-gray-50 text-sm text-gray-500">
+          폴더 채팅 모드 — PDF 뷰어는 문서 모드에서 사용합니다.
+        </div>
+      )}
 
-      <ChatPanel
-        fileId={selectedFileId}
-        fileName={selectedDoc?.fileName ?? null}
-        indexStatus={currentIndexStatus}
-        onPageNavigate={(page) => setTargetPage(page)}
-      />
+      <div className="flex w-96 flex-col border-l bg-white">
+        <div className="flex border-b">
+          <button
+            type="button"
+            onClick={() => setChatMode('document')}
+            className={
+              'flex-1 px-3 py-2 text-sm' +
+              (chatMode === 'document' ? ' border-b-2 border-blue-500 font-medium' : ' text-gray-500')
+            }
+          >
+            문서 채팅
+          </button>
+          <button
+            type="button"
+            onClick={() => setChatMode('folder')}
+            className={
+              'flex-1 px-3 py-2 text-sm' +
+              (chatMode === 'folder' ? ' border-b-2 border-blue-500 font-medium' : ' text-gray-500')
+            }
+          >
+            폴더 채팅
+          </button>
+        </div>
+        {chatMode === 'document' ? (
+          <ChatPanel
+            fileId={selectedFileId}
+            fileName={selectedDoc?.fileName ?? null}
+            indexStatus={currentIndexStatus}
+            onPageNavigate={(page) => setTargetPage(page)}
+          />
+        ) : user?.tenantId ? (
+          <FolderChatPanel folderId={folderId.trim() || 'demo-folder'} tenantId={user.tenantId} />
+        ) : null}
+      </div>
     </div>
   )
 }

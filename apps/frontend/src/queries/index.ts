@@ -49,15 +49,21 @@ export function useFiles(tenantId: string | undefined) {
   })
 }
 
+interface UploadFileInput {
+  file: File
+  folderId?: string
+}
+
 export function useUploadFile(tenantId: string | undefined) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (file: File) => {
+    mutationFn: (input: UploadFileInput | File) => {
       if (!tenantId) {
         throw new Error('Tenant ID is required')
       }
-      return api.functional.tenants.files.upload(getConnection(), tenantId, { file })
+      const payload = input instanceof File ? { file: input } : input
+      return api.functional.tenants.files.upload(getConnection(), tenantId, payload)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['files', tenantId] })
@@ -87,6 +93,14 @@ export function useQuota(enabled: boolean) {
     queryFn: () => {
       return api.functional.auth.quota.getQuota(getConnection())
     },
+    enabled,
+  })
+}
+
+export function useAdminTenants(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-tenants'] as const,
+    queryFn: () => api.functional.admin.tenants.listTenants(getConnection()),
     enabled,
   })
 }

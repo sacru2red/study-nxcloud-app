@@ -2,6 +2,32 @@
 
 Nextcloud를 파일 저장소로 활용한 멀티테넌트 문서 AI 채팅 시스템. PDF 업로드 → 자동 인덱싱 → RAG 기반 질의응답.
 
+## 목차
+
+- [Quick Start](#quick-start)
+- [Demo](#demo)
+- [Monorepo 구조](#monorepo-구조)
+- [아키텍처](#아키텍처)
+- [문서](#문서)
+- [API Endpoints](#api-endpoints)
+- [요구사항 충족 현황](#요구사항-충족-현황)
+
+## Quick Start
+
+```bash
+docker compose -f infra/docker-compose.yml up -d
+cp .env.template .env   # GEMINI_API_KEY, LLM_API_KEY 등 설정
+npx prisma db push --schema=prisma/schema.prisma --config=prisma/prisma.config.ts
+npx tsx prisma/seed.ts
+npx nx run-many -t serve -p backend frontend
+```
+
+- Frontend: http://localhost:4200 (API 프록시 → backend `:3000`)
+- Swagger: http://localhost:3000/swagger-doc
+- 로그인: `user-a1@example.com` / `password123` ([테스트 계정](./docs/development.md#테스트-계정))
+
+상세 설정·E2E·데모 캡처는 [docs/development.md](./docs/development.md)를 참고하세요.
+
 ## Demo
 
 > PDF(`202212301672357894280.pdf`)를 업로드하고 **"하이브리드 자동차가 무엇인가요?"** 라고 질문하는 전체 흐름입니다.
@@ -28,6 +54,20 @@ GitHub README는 동영상 인라인 재생을 지원하지 않습니다. 아래
 
 [MP4](./docs/demo-capture.mp4) · [WebM](./docs/demo-capture.webm)
 
+스크린샷·동영상 재생성: [docs/development.md — 데모 캡처](./docs/development.md#데모-캡처-스크린샷-자동-생성)
+
+## Monorepo 구조
+
+| 경로 | 설명 |
+| ---- | ---- |
+| `apps/backend` | NestJS API, RAG, 인덱싱 |
+| `apps/frontend` | React + Vite UI |
+| `apps/backend-e2e` | API Jest E2E |
+| `apps/frontend-e2e` | Playwright (`capture-demo`) |
+| `infra/` | Docker Compose (Postgres, Nextcloud) |
+| `prisma/` | 스키마·seed |
+| `tools/concat-demo-videos.js` | 데모 WebM 합본 + MP4 변환 |
+
 ## 아키텍처
 
 ### 전체 구조
@@ -36,261 +76,89 @@ GitHub README는 동영상 인라인 재생을 지원하지 않습니다. 아래
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         Frontend (React + Vite)                      │
 │  ┌──────────┐  ┌──────────────┐  ┌──────────────────────────────┐  │
-│  │  Sidebar  │  │  PdfViewer   │  │         ChatPanel            │  │
-│  │  w-72     │  │  flex-1      │  │  w-96                        │  │
-│  │           │  │              │  │  ┌────────────────────────┐  │  │
-│  │  파일목록 │  │  iframe      │  │  │  메시지 버블           │  │  │
-│  │  업로드   │  │  페이지이동  │  │  │  SourceCard(근거)      │  │  │
-│  └────┬──────┘  └──────┬───────┘  │  └────────────────────────┘  │  │
-│       │                │          │  ┌────────────────────────┐  │  │
-│       │                │          │  │  질문 입력 → 전송      │  │  │
-│       │                │          │  └────────────────────────┘  │  │
-│       └────────────────┼──────────┘                              │  │
-│                        │                                         │  │
-└────────────────────────┼─────────────────────────────────────────┘
-                         │ HTTP /api (Vite proxy → localhost:3000)
-                         │
-┌────────────────────────┼─────────────────────────────────────────┐
-│              Backend (NestJS + Nestia)                            │
-│                                                                   │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │
-│  │ Auth     │  │ Files    │  │ Admin    │  │ Chat             │ │
-│  │ Controller│  │Controller│  │Controller│  │ Controller       │ │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └───────┬──────────┘ │
-│       │              │             │                │            │
-│  ┌────┴─────┐  ┌────┴─────┐  ┌────┴─────┐  ┌───────┴──────────┐ │
-│  │ Auth     │  │ Files    │  │ Admin    │  │ Chat Provider    │ │
-│  │ Provider │  │ Provider │  │ Provider │  │ (RAG Pipeline)   │ │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └───────┬──────────┘ │
-│       │              │             │                │            │
-│       └──────────────┼─────────────┘                │            │
-│                      │                              │            │
-│  ┌───────────────────┴──────────────────────────────────┐       │
-│  │              Nextcloud Provider (WebDAV + OCS)       │       │
-│  │  uploadFile / listFiles / getFile / getUserQuota     │       │
-│  └───────────────────────┬──────────────────────────────┘       │
-│                          │                                      │
-│  ┌───────────────────────┴──────────────────────────────┐       │
-│  │              PDF Worker Provider                      │       │
-│  │  pdf-parse → chunk(500/100 overlap) → Embedding      │       │
-│  └───────────────────────┬──────────────────────────────┘       │
-│                          │                                      │
-│  ┌───────────────────────┴──────────────────────────────┐       │
-│  │  Embedding Provider  │  LLM Provider                 │       │
-│  │  Gemini API → pgvector│  opencode zen → RAG 응답    │       │
-│  └───────────────────────┴──────────────────────────────┘       │
-│                                                                   │
-└───────────────────────────────────────────────────────────────────┘
+│  │  Sidebar  │  │  PdfViewer   │  │  ChatPanel / FolderChat      │  │
+│  │  파일목록 │  │  react-pdf   │  │  SourceCard(근거)            │  │
+│  │  업로드   │  │  페이지이동  │  │  diagnostics 표시          │  │
+│  └────┬──────┘  └──────┬───────┘  └──────────────────────────────┘  │
+│       └────────────────┼──────────────────────────────────────────┘  │
+└────────────────────────┼─────────────────────────────────────────────┘
+                         │ HTTP /api (Vite :4200 → proxy :3000)
+┌────────────────────────┼─────────────────────────────────────────────┐
+│              Backend (NestJS + Nestia)                                │
+│  Auth / Files / Admin / Chat / Folder controllers                     │
+│  Providers: Nextcloud, PdfWorker, EmbeddingProvider, LlmProvider      │
+└────────────────────────┼─────────────────────────────────────────────┘
          │                     │
          ▼                     ▼
-┌─────────────────┐  ┌──────────────────┐
-│  PostgreSQL     │  │  Nextcloud       │
-│  + pgvector     │  │  (File Storage)  │
-│                 │  │                  │
-│  tenants        │  │  /tenant-a/      │
-│  users          │  │  /tenant-b/      │
-│  documents      │  │                  │
-│  document_chunks│  │  OCS API → quota │
-│  (vector(768))  │  │  WebDAV → 파일   │
-│  chat_sessions  │  │                  │
-│  chat_messages  │  │                  │
-└─────────────────┘  └──────────────────┘
+   PostgreSQL + pgvector    Nextcloud (WebDAV + OCS)
 ```
 
-### 데이터 모델 (ERD)
+### RAG 파이프라인 (요약)
 
-#### Tenants ← Users ← Documents ← Document Chunks
+1. `EmbeddingProvider.generateEmbedding(question)` — Gemini `gemini-embedding-001` (768d), 429 시 재시도·OpenRouter 폴백
+2. pgvector 검색 — `WHERE tenant_id` + `document_id` (또는 `folder_id`), similarity ≥ 0.3
+3. `LlmProvider.chat` — `.env`의 `LLM_MODEL` / `LLM_BASE_URL`
+4. 응답 — `answer`, `sources[]`, optional `diagnostics` (`NO_RELEVANT_CHUNKS`, `EMBEDDING_FAILED`, `LLM_API_FAILED`)
 
-```
-tenants (tenant_id PK)
-  │
-  ├─ users (user_id PK, tenant_id FK)
-  │    ├─ documents (document_id PK, tenant_id FK, owner_user_id FK)
-  │    │    └─ document_chunks (chunk_id PK, document_id FK, tenant_id FK)
-  │    │         └─ embedding: vector(768) ← pgvector
-  │    └─ chat_sessions (session_id PK, tenant_id FK, user_id FK, document_id FK)
-  │         └─ chat_messages (message_id PK, session_id FK)
-```
+### PDF 인덱싱 (요약)
 
-#### 테넌트 격리
-
-- 모든 테이블에 `tenant_id` 컬럼 포함
-- API 레벨에서 `TenantGuard`가 JWT의 tenantId와 URL의 tenantId 일치 검증
-- DB 쿼리 시 항상 `WHERE tenant_id = ?` 조건 포함
-
-### RAG (Retrieval-Augmented Generation) 파이프라인
-
-```
-사용자 질문
-    │
-    ▼
-[1] EmbeddingService.generateEmbedding(question)
-    │ → Gemini gemini-embedding-001 API (768d)
-    │ → 768차원 벡터
-    ▼
-[2] pgvector 유사도 검색
-    │ → SELECT ..., 1 - (embedding <=> $1::vector) as similarity
-    │ → WHERE tenant_id = ? AND document_id = ?
-    │ → ORDER BY embedding <=> $1::vector LIMIT 5
-    │ → similarity >= 0.3 필터
-    ▼
-[3] 컨텍스트 조합
-    │ → 검색된 chunk_text를 \n\n 으로 결합
-    ▼
-[4] LLM 호출
-    │ → System Prompt: "문서 내용만 근거로 답변. 없으면 '문서에서 확인 불가'"
-    │ → User Message: [문서 내용] + [질문]
-    │ → model: minimax-m2.5-free
-    ▼
-[5] 응답 + 근거 반환
-    │ → answer: LLM 응답 텍스트
-    │ → sources: [{fileName, pageNo, paragraphNo, text(200자), similarity}]
-    │ → chat_messages에 저장
-```
-
-### PDF 인덱싱 파이프라인
-
-```
-파일 업로드
-    │
-    ▼
-[1] Nextcloud WebDAV PUT (/files/admin/{tenantId}/{fileName})
-    │ → documents INSERT (status: PENDING)
-    ▼
-[2] PdfWorker.processDocument(documentId)
-    │ → status: PROCESSING으로 변경
-    │ → Nextcloud에서 파일 다운로드
-    ▼
-[3] pdf-parse 로 텍스트 추출
-    │ → 페이지별 분리 (\f 구분자)
-    ▼
-[4] 청크 분해
-    │ → 500자 단위, 100자 overlap
-    │ → 각 청크: {pageNo, paragraphNo, chunkText}
-    │ → document_chunks INSERT
-    ▼
-[5] Gemini Embedding 생성
-    │ → 50개 배치, 1초 간격 rate limiting
-    │ → pgvector UPDATE (embedding 컬럼)
-    ▼
-[6] 완료 처리
-    │ → status: COMPLETED
-    │ → pageCount, chunkCount 업데이트
-```
+업로드 → Nextcloud WebDAV → `pdf-parse` → chunk(500/100 overlap) → 청크별 embedding → `COMPLETED`
 
 ### 보안 / 권한
 
-#### 인증 (JWT)
-
-- `POST /api/auth/login` → email + password → JWT 발급
-- JWT payload: `{ userId, tenantId, email, role }`
-- 만료: 24시간 (`.env`에서 설정 가능)
-- Passport 없이 `JwtService` 직접 검증
-
-#### 인가 (Guards)
-
-- **JwtAuthGuard**: 모든 보호된 엔드포인트에 적용
-- **TenantGuard**: URL의 `:tenantId`와 JWT의 `tenantId` 비교
-- **Role Check**: Admin 엔드포인트에서 `user.role === 'admin'` 검증
-
-#### 테넌트 데이터 격리
-
-- 모든 DB 쿼리에 `tenant_id` WHERE 조건 포함
-- Vector DB 검색에도 `tenant_id` 필터 적용
-- 파일 접근 시 소유권 + 테넌트 이중 검증
+- **JwtAuthGuard** + **TenantGuard** (일반 tenant API)
+- **AdminRoleGuard** (admin 전용 `/api/admin/*`, tenant 간 usage 조회)
+- Vector·DB 쿼리에 `tenant_id` 필터
 
 ### 기술 스택
 
-| Category     | Technology                                                       |
-| ------------ | ---------------------------------------------------------------- |
-| Monorepo     | Nx 22.7                                                          |
-| Backend      | NestJS 11 + Nestia 11                                            |
-| Frontend     | React 19 + Vite 8 + TailwindCSS 3                                |
-| Database     | PostgreSQL 16 + pgvector                                         |
-| File Storage | Nextcloud (WebDAV + OCS API)                                     |
+| Category     | Technology |
+| ------------ | ---------- |
+| Monorepo     | Nx 22.7 |
+| Backend      | NestJS 11 + Nestia 11 |
+| Frontend     | React 19 + Vite 8 + TailwindCSS 3 |
+| Database     | PostgreSQL 16 + pgvector |
+| File Storage | Nextcloud (WebDAV + OCS API) |
 | Embedding    | Gemini gemini-embedding-001 (768d); optional OpenRouter fallback |
-| LLM          | opencode zen                                                     |
-| Auth         | JWT (bcrypt + @nestjs/jwt)                                       |
-| State        | jotai + @tanstack/react-query                                    |
-| Router       | @tanstack/react-router                                           |
-| SDK          | typia + @nestia/core                                             |
+| LLM          | opencode zen / OpenRouter (`LLM_MODEL`, `LLM_BASE_URL`) |
+| Auth         | JWT (bcrypt + @nestjs/jwt) |
+| State        | jotai + @tanstack/react-query |
+| Router       | @tanstack/react-router |
+| SDK          | typia + @nestia/core |
 
 ## 문서
 
-| 문서　　　　　　　　　　　　　　　　　　　　　　　　　　　　 | 설명　　　　　　　　　　　　　　　　　　　　　　　　 |
-| ------------------------------------------------------------ | ---------------------------------------------------- |
-| [docs/development.md](./docs/development.md)　　　　　　　　 | 로컬 환경 설정, 개발 서버, E2E 테스트　　　　　　　  |
-| [docs/deploy-oracle-cloud.md](./docs/deploy-oracle-cloud.md) | Oracle Cloud 무료 VM 모놀리식 배포 (Docker Compose)  |
-| [docs/api-examples.md](./docs/api-examples.md)　　　　　　　 | API 응답 예시　　　　　　　　　　　　　　　　　　　  |
-| [docs/nestia-guide.md](./docs/nestia-guide.md)　　　　　　　 | Nestia 사용 가이드　　　　　　　　　　　　　　　　　 |
+| 문서 | 설명 |
+| ---- | ---- |
+| [docs/development.md](./docs/development.md) | 로컬 환경, E2E, 데모 캡처, 벤치마크 |
+| [docs/deploy-oracle-cloud.md](./docs/deploy-oracle-cloud.md) | Oracle Cloud 배포 |
+| [docs/api-examples.md](./docs/api-examples.md) | API 응답 예시 |
+| [docs/logging-policy.md](./docs/logging-policy.md) | 로그·채팅 보관 정책 |
+| [docs/requirements-checklist.md](./docs/requirements-checklist.md) | 과제 요구사항 체크리스트 |
+| [docs/nestia-guide.md](./docs/nestia-guide.md) | Nestia 가이드 |
 
 ## API Endpoints
 
-| Method | Endpoint                                   | Description　　　　　　 | Auth         |
-| ------ | ------------------------------------------ | ----------------------- | ------------ |
-| POST   | `/api/auth/login`                          | 로그인　　　　　　　　  | -            |
-| GET    | `/api/auth/quota`                          | 사용자 저장공간 할당량  | JWT          |
-| POST   | `/api/tenants/:tenantId/files`             | PDF 업로드　　　　　　  | JWT + Tenant |
-| GET    | `/api/tenants/:tenantId/files`             | 파일 목록　　　　　　　 | JWT + Tenant |
-| GET    | `/api/files/:fileId/index-status`          | 인덱싱 상태　　　　　　 | JWT          |
-| POST   | `/api/files/:fileId/chat`                  | AI 채팅 질문　　　　　  | JWT          |
-| GET    | `/api/admin/tenants/:tenantId/users-usage` | 사용량 조회　　　　　　 | JWT + Admin  |
+| Method | Endpoint | Description | Auth |
+| ------ | -------- | ----------- | ---- |
+| POST | `/api/auth/login` | 로그인 | - |
+| GET | `/api/auth/quota` | 저장공간 할당량 | JWT |
+| POST | `/api/tenants/:tenantId/files` | PDF 업로드 (`folderId` 선택) | JWT + Tenant |
+| GET | `/api/tenants/:tenantId/files` | 파일 목록 | JWT + Tenant |
+| GET | `/api/files/:fileId/index-status` | 인덱싱 상태 | JWT |
+| POST | `/api/files/:fileId/retry` | 인덱싱 재시도 | JWT |
+| GET | `/api/files/:fileId/content` | PDF 스트림 (뷰어) | JWT |
+| POST | `/api/files/:fileId/chat` | 문서 RAG (`diagnostics` 선택) | JWT |
+| POST | `/api/folders/:folderId/chat` | 폴더 RAG | JWT |
+| GET | `/api/admin/tenants` | tenant 목록 | JWT + Admin |
+| GET | `/api/admin/tenants/:tenantId/users-usage` | 사용자별 usage + `lastCollectedAt` | JWT + Admin |
 
-## checkpoints
+Swagger: http://localhost:3000/swagger-doc
 
-- [x] Docker Compose 또는 Snap 중 하나를 선택하여 로컬 또는 자체 서버 환경에 구축한다. -> Docker compose (/infra)
-- [x] 회사 tenant는 Nextcloud Group으로 매핑한다. 예: tenant-a, tenant-b
-- [x] 각 회사에 사용자 3명 이상을 생성하고 해당 Group에 소속시킨다.
-- [x] 사용자별 기본 quota를 100MB로 설정한다.
-- [x] 최소 1명 이상의 사용자는 파일 업로드를 통해 50MB 이상 사용하도록 구성한다.
-- [x] Nextcloud 관리자 계정, App Password, API Key 등은 환경변수로 관리한다.
-- [x] Nextcloud OCS Provisioning API를 이용해 사용자별 used/quota를 조회한다.
-- [ ] 특정 tenant에 속한 사용자들의 사용량 목록을 제공한다. -> 다른 사용자의 사용량 현황 ?
-- [ ] 필수응답필드 tenantId, userId 또는 email, usedBytes, quotaBytes, usagePercent, lastCollectedAt -> lastCollectedAt 빠짐
-- [ ] 관리자 화면 회사 선택 UI와 사용자별 사용량 테이블을 제공한다.
-- [x] 사용률을 시각적으로 표시한다. 색상 기준은 지원자가 자유롭게 정의한다.
-- [x] Nextcloud API 장애 또는 인증 실패 시 5xx 응답과 안전한 오류 메시지를 반환한다.
-- [x] PDF 파일 업로드를 지원한다. PDF 총 용량은 200MB 이하 기준으로 테스트한다.
-- [x] 업로드된 파일은 Nextcloud의 사용자 또는 tenant 전용 폴더에 저장한다.
-- [x] Nextcloud에 저장된 폴더와 PDF 파일 목록을 화면에 표시한다.
-- [x] PENDING, PROCESSING, COMPLETED, FAILED 등 인덱싱 상태를 표시한다.
-- [x] PDF 파일을 선택하면 오른쪽 AI 채팅창이 활성화된다.
-- [x] 단일 파일 기준 질문은 필수이며, 폴더 기준 질문은 선택 기능으로 구현할 수 있다.
-- [x] PDF 업로드 완료 시 문서 처리 작업을 생성한다.
-- [x] PDF 페이지별 텍스트를 추출한다. OCR은 선택 기능으로 둔다.
-- [x] 페이지, 문단, 길이 기준으로 텍스트를 chunk 단위로 분해한다.
-- [x] tenantId, documentId, fileName, pageNo, paragraphNo, bbox 정보를 저장한다.
-- [x] chunk별 embedding을 생성한다.
-- [x] embedding과 메타데이터를 Vector DB에 저장한다.
-- [x] 파일 변경 또는 인덱싱 실패 시 재처리할 수 있는 구조를 고려한다.
-- [x] 오른쪽 채팅창에서 사용자가 자연어 질문을 입력한다.
-- [ ] tenantId와 documentId 또는 folderId 조건으로 문서를 검색한다.
-- [x] 검색된 문서 chunk를 근거로 LLM이 답변을 생성한다.
-- [x] 파일명, 페이지 번호, 문단 번호, 근거 텍스트 일부를 함께 제공한다.
-- [x] 검색 결과가 부족하면 “문서에서 확인 불가”라고 답변한다.
-- [x] 문서에 없는 내용을 일반 지식으로 보완하지 않는다.
-- [ ] PDF 총 용량 200MB 이하 기준, 질의응답 처리 시간 10초 이내를 목표로 한다.
+## 요구사항 충족 현황
 
-## 보안 및 권한 요구사항
+과제 체크리스트 전체는 [docs/requirements-checklist.md](./docs/requirements-checklist.md)에서 관리합니다.
 
-- [x] Tenant 격리 모든 API 요청에서 사용자 tenantId를 검증하고, DB/Vector 검색 조건에 tenantId를 포함한다.
-- [x] 파일 권한 Nextcloud WebDAV 접근 전 해당 파일이 사용자 또는 tenant에 허용된 파일인지 확인한다.
-- [ ] Vector DB 격리 검색 시 tenantId 필터를 강제한다. 전체 Vector DB 검색을 금지한다.
-- [x] 비밀정보 관리 Nextcloud App Password, LLM API Key, DB Password는 환경변수 또는 Secret Manager로 관리한다.
-- [ ] 로그 관리 질문/답변 로그에는 민감정보가 포함될 수 있으므로 접근 권한과 보관 기간을 정의한다.
-- [ ] 오류 처리 Nextcloud API 실패 시 민감정보를 제외한 오류 메시지를 반환한다.
-- [x] 환각 억제 검색 근거가 없는 경우 일반 지식으로 답변하지 않고 “문서에서 확인 불가”를 반환한다.
-
-## 필수 테스트 시나리오
-
-- [x] tenant-a 사용자로 로그인 tenant-a에 허용된 파일만 표시된다.
-- [x] tenant-b 파일 직접 접근 시도 403 Forbidden 또는 접근 불가 메시지를 반환한다.
-- [x] PDF 파일 업로드 Nextcloud에 파일이 저장되고 documents에 PENDING 상태로 등록된다.
-- [x] PDF 인덱싱 완료 indexStatus가 COMPLETED로 변경되고 chunkCount가 표시된다.
-- [x] 파일 선택 오른쪽 AI 채팅창이 표시된다.
-- [x] 문서 내용 질문 답변과 파일명/페이지/문단/근거 텍스트가 표시된다.
-- [x] 문서에 없는 질문 “문서에서 확인 불가”라고 표시된다.
-- [x] 50MB 이상 파일 업로드 used/quota 사용률이 50% 이상으로 표시된다.
-- [x] Nextcloud API 인증 실패 Backend가 5xx 오류와 안전한 메시지를 반환한다.
-- [ ] Vector DB 장애 채팅 응답 실패 메시지를 표시하고 시스템 로그에 원인을 기록한다.
-
+- **완료**: 멀티테넌트·Nextcloud·RAG·Admin usage·폴더 RAG·E2E 시나리오 대부분
+- **미구현(선택)**: PDF bbox 좌표 추출
+- **목표(측정)**: Q&A 10초 이내 — [벤치마크 절차](./docs/development.md#rag-응답-시간-벤치마크)

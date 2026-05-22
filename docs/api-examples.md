@@ -266,7 +266,89 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs... (tenant-a 토큰)
 
 ---
 
-## 10. 인증 실패
+## 10. Admin — Tenant 목록
+
+```http
+GET /api/admin/tenants
+Authorization: Bearer <admin JWT>
+```
+
+**Response 200:**
+
+```json
+{
+  "tenants": [
+    {
+      "tenantId": "660e8400-e29b-41d4-a716-446655440001",
+      "name": "Tenant A",
+      "ncGroupId": "tenant-a"
+    }
+  ]
+}
+```
+
+---
+
+## 11. Admin — 사용자 사용량 (lastCollectedAt)
+
+```http
+GET /api/admin/tenants/{tenantId}/users-usage
+Authorization: Bearer <admin JWT>
+```
+
+**Response 200:**
+
+```json
+{
+  "tenantId": "660e8400-e29b-41d4-a716-446655440001",
+  "lastCollectedAt": "2026-05-20T10:00:00.000Z",
+  "users": [
+    {
+      "userId": "550e8400-e29b-41d4-a716-446655440000",
+      "email": "user-a1@example.com",
+      "ncUserId": "user-a1",
+      "role": "admin",
+      "usedBytes": 52428800,
+      "quotaBytes": 104857600,
+      "usagePercent": 50,
+      "lastCollectedAt": "2026-05-20T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+## 12. 폴더 RAG 채팅
+
+```http
+POST /api/folders/{folderId}/chat
+Authorization: Bearer <JWT>
+Content-Type: application/json
+
+{ "question": "이 폴더 문서들의 공통 주제는?" }
+```
+
+**Response 200:** `answer`, `sources[]`, `sessionId`, `documentCount` (단일 파일 chat과 유사, source에 `documentId` 포함 가능)
+
+---
+
+## 13. 채팅 diagnostics (선택 필드)
+
+```json
+{
+  "answer": "문서에서 확인 불가",
+  "sources": [],
+  "sessionId": "550e8400-e29b-41d4-a716-446655440099",
+  "diagnostics": {
+    "reason": "EMBEDDING_FAILED"
+  }
+}
+```
+
+---
+
+## 14. 인증 실패
 
 ```http
 GET /api/tenants/tenant-a/files

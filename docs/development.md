@@ -53,7 +53,7 @@ npx nx run-many -t serve -p backend frontend
 ```
 
 - Backend: http://localhost:3000/api
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:4200
 - Swagger: http://localhost:3000/swagger-doc
 - Nextcloud: http://localhost:8081 (admin / admin123)
 
@@ -163,9 +163,25 @@ curl http://localhost:3000/api/tenants/tenant-b/files \
 
 모놀리식 Docker Compose 배포는 [deploy-oracle-cloud.md](./deploy-oracle-cloud.md)를 참고하세요.
 
+## RAG 응답 시간 벤치마크
+
+과제 목표는 PDF 200MB 이하 기준 **질의응답 10초 이내**입니다. 로컬에서 측정 예:
+
+```bash
+# 로그인 후 TOKEN, FILE_ID 설정
+curl -o /dev/null -s -w "total=%{time_total}s\n" \
+  -X POST "http://localhost:3000/api/files/${FILE_ID}/chat" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"하이브리드 자동차가 무엇인가요?"}'
+```
+
+인덱싱 완료·Gemini/OpenRouter 할당량·문서 크기에 따라 달라질 수 있습니다.
+
 ## 관련 문서
 
-- [README.md](../README.md#아키텍처) — 시스템 아키텍처
+- [README.md](../README.md) — 프로젝트 개요
 - [api-examples.md](./api-examples.md) — API 응답 예시
+- [logging-policy.md](./logging-policy.md) — 로그·채팅 보관 정책
+- [requirements-checklist.md](./requirements-checklist.md) — 과제 체크리스트
 - [nestia-guide.md](./nestia-guide.md) — Nestia 사용 가이드
-- [submission-tasks.md](./submission-tasks.md) — 제출 준비 및 데모 캡처 자동화

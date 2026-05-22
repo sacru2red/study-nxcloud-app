@@ -2,20 +2,25 @@ import { Controller, UseGuards } from '@nestjs/common'
 import { TypedRoute, TypedParam } from '@nestia/core'
 import { AdminProvider } from '../providers/admin.provider'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
-import { TenantGuard } from '../common/guards/tenant.guard'
-import { CurrentUser } from '../common/decorators/current-user.decorator'
-import { IJwtPayload } from './auth.dto'
+import { AdminRoleGuard } from '../common/guards/admin-role.guard'
 import { AdminDto } from './admin.dto'
 
+@Controller('admin')
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
+export class AdminTenantsController {
+  @TypedRoute.Get('tenants')
+  async listTenants(): Promise<AdminDto.TenantListResponse> {
+    return AdminProvider.listTenants()
+  }
+}
+
 @Controller('admin/tenants/:tenantId')
-@UseGuards(JwtAuthGuard, TenantGuard)
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
 export class AdminController {
   @TypedRoute.Get('users-usage')
   async getUsersUsage(
-    @TypedParam('tenantId') _tenantId: string,
-    @CurrentUser() user: IJwtPayload,
+    @TypedParam('tenantId') tenantId: string,
   ): Promise<AdminDto.UsersUsageResponse> {
-    if (user.role !== 'admin') throw new Error('Forbidden')
-    return AdminProvider.getUsersUsage(user.tenantId)
+    return AdminProvider.getUsersUsage(tenantId)
   }
 }

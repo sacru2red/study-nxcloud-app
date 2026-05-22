@@ -259,6 +259,18 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     expect(typeof first.usedBytes).toBe('number')
     expect(typeof first.quotaBytes).toBe('number')
     expect(typeof first.usagePercent).toBe('number')
+    expect(first.lastCollectedAt).toBeTruthy()
+    expect(res.data.lastCollectedAt).toBeTruthy()
+  })
+
+  it('8b. should list tenants for admin', async () => {
+    const res = await axios.get('/api/admin/tenants', {
+      headers: { Authorization: `Bearer ${tokenA}` },
+    })
+
+    expect(res.status).toBe(200)
+    expect(Array.isArray(res.data.tenants)).toBe(true)
+    expect(res.data.tenants.length).toBeGreaterThanOrEqual(2)
   })
 
   // ── Test 9: 로그인 실패 (잘못된 비밀번호) ────────────────────────────────

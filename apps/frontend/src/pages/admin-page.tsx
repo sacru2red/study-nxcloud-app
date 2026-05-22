@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { Navigate } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import { userAtom, isAuthenticatedAtom } from '../stores/auth'
-import { useUsersUsage } from '../queries'
+import { useAdminTenants, useUsersUsage } from '../queries'
 
 function ProgressBar({ percent }: { percent: number }) {
   const barColor = percent >= 80 ? 'bg-red-500' : percent >= 50 ? 'bg-yellow-500' : 'bg-green-500'
@@ -22,47 +23,50 @@ function ProgressBar({ percent }: { percent: number }) {
 export function AdminPage() {
   const isAuth = useAtomValue(isAuthenticatedAtom)
   const user = useAtomValue(userAtom)
+  const { data: tenantsData } = useAdminTenants(user?.role === 'admin')
+  const [selectedTenantId, setSelectedTenantId] = useState<string | undefined>(user?.tenantId)
+
+  const activeTenantId = selectedTenantId ?? user?.tenantId
+  const { data, isLoading, isError, refetch } = useUsersUsage(activeTenantId)
 
   if (!isAuth) return <Navigate to="/login" />
   if (user?.role !== 'admin') return <Navigate to="/" />
 
-  const { data, isLoading, isError, refetch } = useUsersUsage(user?.tenantId)
-
   return (
     <div className="mx-auto max-w-6xl p-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-gray-800">Admin Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">User storage usage for {user?.email}</p>
+          <p className="mt-1 text-sm text-gray-500">Tenant별 사용자 저장공간 사용량</p>
         </div>
-        <button
-          onClick={() => refetch()}
-          className="rounded-lg border px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-gray-600" htmlFor="tenant-select">
+            회사(Tenant)
+          </label>
+          <select
+            id="tenant-select"
+            value={activeTenantId ?? ''}
+            onChange={(event) => setSelectedTenantId(event.target.value)}
+            className="rounded-lg border px-3 py-2 text-sm"
+          >
+            {(tenantsData?.tenants ?? []).map((tenant) => (
+              <option key={tenant.tenantId} value={tenant.tenantId}>
+                {tenant.name} ({tenant.ncGroupId})
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => refetch()}
+            className="rounded-lg border px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       {isLoading && (
         <div className="flex items-center justify-center py-20">
-          <div className="flex flex-col items-center gap-2">
-            <svg className="h-6 w-6 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-            <p className="text-sm text-gray-400">Loading usage data...</p>
-          </div>
+          <p className="text-sm text-gray-400">Loading usage data...</p>
         </div>
       )}
 
@@ -79,42 +83,48 @@ export function AdminPage() {
       )}
 
       {data && data.users.length > 0 && (
-        <div className="overflow-hidden rounded-lg border">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+        <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+          <p className="border-b px-4 py-2 text-xs text-gray-500">
+            수집 시각: {new Date(data.lastCollectedAt).toLocaleString()}
+          </p>
+          <table className="w-full text-sm">
+            <thead className="border-b bg-gray-50">
               <tr>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">NC User ID</th>
-                <th className="px-4 py-3 font-medium">Role</th>
-                <th className="px-4 py-3 font-medium">Used</th>
-                <th className="px-4 py-3 font-medium">Quota</th>
-                <th className="px-4 py-3 font-medium">Usage</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">Email</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">Role</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">Used</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">Quota</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">Usage</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">Collected</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {data.users.map((u) => (
-                <tr key={u.userId} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">{u.email}</td>
-                  <td className="px-4 py-3 text-gray-500">{u.ncUserId}</td>
+            <tbody>
+              {data.users.map((row) => (
+                <tr key={row.userId} className="border-b last:border-0">
+                  <td className="px-4 py-3 text-gray-800">{row.email}</td>
                   <td className="px-4 py-3">
                     <span
                       className={
-                        u.role === 'admin'
-                          ? 'rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-600'
-                          : 'rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500'
+                        'rounded px-1.5 py-0.5 text-xs font-medium' +
+                        (row.role === 'admin'
+                          ? ' bg-purple-100 text-purple-700'
+                          : ' bg-gray-100 text-gray-600')
                       }
                     >
-                      {u.role}
+                      {row.role}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
-                    {u.usedBytes > 0 ? `${(u.usedBytes / (1024 * 1024)).toFixed(1)} MB` : '0 MB'}
+                    {(row.usedBytes / (1024 * 1024)).toFixed(1)} MB
                   </td>
                   <td className="px-4 py-3 text-gray-600">
-                    {u.quotaBytes > 0 ? `${(u.quotaBytes / (1024 * 1024)).toFixed(1)} MB` : 'N/A'}
+                    {(row.quotaBytes / (1024 * 1024)).toFixed(0)} MB
                   </td>
                   <td className="px-4 py-3">
-                    <ProgressBar percent={u.usagePercent} />
+                    <ProgressBar percent={row.usagePercent} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {new Date(row.lastCollectedAt).toLocaleString()}
                   </td>
                 </tr>
               ))}

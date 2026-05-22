@@ -7,6 +7,18 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   sources?: ChatSource[]
+  diagnosticsReason?: string
+}
+
+function formatDiagnosticsMessage(reason: string | undefined): string | undefined {
+  if (!reason) return undefined
+  const labels: Record<string, string> = {
+    NO_RELEVANT_CHUNKS: '관련 문서 구간을 찾지 못했습니다.',
+    EMBEDDING_FAILED: '질문 임베딩에 실패했습니다.',
+    LLM_API_FAILED: 'LLM API 호출에 실패했습니다.',
+    REQUEST_FAILED: '요청 처리에 실패했습니다.',
+  }
+  return labels[reason] ?? reason
 }
 
 export interface ChatPanelProps {
@@ -52,6 +64,7 @@ export function ChatPanel({ fileId, fileName, indexStatus, onPageNavigate }: Cha
             role: 'assistant',
             content: res.answer,
             sources: res.sources,
+            diagnosticsReason: res.diagnostics?.reason,
           },
         ])
       },
@@ -60,7 +73,8 @@ export function ChatPanel({ fileId, fileName, indexStatus, onPageNavigate }: Cha
           ...prev,
           {
             role: 'assistant',
-            content: 'Sorry, an error occurred while processing your question.',
+            content: '질문 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+            diagnosticsReason: 'REQUEST_FAILED',
           },
         ])
       },
@@ -68,7 +82,7 @@ export function ChatPanel({ fileId, fileName, indexStatus, onPageNavigate }: Cha
   }
 
   return (
-    <div className="flex w-96 flex-col border-l bg-white">
+    <div className="flex min-h-0 flex-1 flex-col bg-white">
       <div className="border-b px-4 py-3">
         <h2 className="text-sm font-semibold text-gray-800">AI Chat</h2>
         {fileName && <p className="mt-0.5 text-xs text-gray-400">{fileName}</p>}
@@ -125,6 +139,11 @@ export function ChatPanel({ fileId, fileName, indexStatus, onPageNavigate }: Cha
                     {msg.content}
                   </div>
                 </div>
+                {formatDiagnosticsMessage(msg.diagnosticsReason) && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    {formatDiagnosticsMessage(msg.diagnosticsReason)}
+                  </p>
+                )}
                 {msg.sources && msg.sources.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {msg.sources.map((source, j) => (

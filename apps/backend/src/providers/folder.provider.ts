@@ -4,6 +4,15 @@ import { LlmProvider } from './llm.provider'
 
 const SIMILARITY_THRESHOLD = 0.3
 
+interface FolderChatSource {
+  documentId: string
+  fileName: string
+  pageNo: number
+  paragraphNo: number
+  text: string
+  similarity: number
+}
+
 export namespace FolderProvider {
   export const chat = async (
     folderId: string,
@@ -61,7 +70,7 @@ export namespace FolderProvider {
     const relevantResults = results.filter((r) => r.similarity >= SIMILARITY_THRESHOLD)
 
     let answer: string
-    let sources: any[]
+    let sources: FolderChatSource[]
 
     if (relevantResults.length === 0) {
       answer = '문서에서 확인 불가'

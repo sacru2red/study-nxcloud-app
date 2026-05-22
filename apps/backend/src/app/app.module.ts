@@ -6,7 +6,7 @@ import { ScheduleModule } from '@nestjs/schedule'
 import { AppController } from '../presentation/app.controller'
 import { AuthController } from '../presentation/auth.controller'
 import { FilesController, FileStatusController } from '../presentation/files.controller'
-import { AdminController } from '../presentation/admin.controller'
+import { AdminController, AdminTenantsController } from '../presentation/admin.controller'
 import { ChatController } from '../presentation/chat.controller'
 import { FolderController } from '../presentation/folder.controller'
 import { JobSchedulerProvider } from '../providers/job-scheduler.provider'
@@ -34,6 +34,7 @@ import { JobSchedulerProvider } from '../providers/job-scheduler.provider'
     AuthController,
     FilesController,
     FileStatusController,
+    AdminTenantsController,
     AdminController,
     ChatController,
     FolderController,

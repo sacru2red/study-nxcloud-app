@@ -1,15 +1,41 @@
 import { createClient, type FileStat, type WebDAVClient } from 'webdav'
 import axios from 'axios'
+import { HttpException, HttpStatus, Logger } from '@nestjs/common'
+
+const logger = new Logger('NextcloudProvider')
 
 const ncUrl = process.env.NEXTCLOUD_URL || 'http://localhost:8081'
 const ncUser = process.env.NEXTCLOUD_ADMIN_USER || 'admin'
 const ncPass = process.env.NEXTCLOUD_ADMIN_PASS || 'admin123'
 
-// WebDAV client: base URL includes user context so paths are relative
 const client: WebDAVClient = createClient(`${ncUrl}/remote.php/dav/files/${ncUser}`, {
   username: ncUser,
   password: ncPass,
 })
+
+function toSafeError(status: HttpStatus, message: string): never {
+  throw new HttpException({ message }, status)
+}
+
+function mapAxiosError(error: unknown, context: string): never {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status
+    logger.error(`${context} failed`, {
+      status,
+      code: error.code,
+    })
+    if (status === 401 || status === 403) {
+      toSafeError(HttpStatus.SERVICE_UNAVAILABLE, 'Nextcloud authentication failed')
+    }
+    if (status && status >= 500) {
+      toSafeError(HttpStatus.SERVICE_UNAVAILABLE, 'Nextcloud service is unavailable')
+    }
+    toSafeError(HttpStatus.SERVICE_UNAVAILABLE, 'Nextcloud request failed')
+  }
+
+  logger.error(`${context} failed`, { error })
+  toSafeError(HttpStatus.SERVICE_UNAVAILABLE, 'Nextcloud request failed')
+}
 
 export namespace NextcloudProvider {
   export const uploadFile = async (
@@ -24,14 +50,19 @@ export namespace NextcloudProvider {
     try {
       await client.createDirectory(dirPath)
       // eslint-disable-next-line no-empty
-    } catch {}
+    } catch {
+      // directory may already exist
+    }
 
-    await client.putFileContents(filePath, buffer, {
-      contentLength: buffer.length,
-      headers: { 'Content-Type': mimeType },
-    })
+    try {
+      await client.putFileContents(filePath, buffer, {
+        contentLength: buffer.length,
+        headers: { 'Content-Type': mimeType },
+      })
+    } catch (error) {
+      mapAxiosError(error, 'uploadFile')
+    }
 
-    // ncPath stored as absolute path for later reference
     const ncPath = `/files/${ncUser}/${tenantId}/${fileName}`
 
     return {
@@ -61,8 +92,12 @@ export namespace NextcloudProvider {
 
   export const getFile = async (tenantId: string, fileName: string) => {
     const filePath = `/${tenantId}/${fileName}`
-    const data = await client.getFileContents(filePath)
-    return Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer)
+    try {
+      const data = await client.getFileContents(filePath)
+      return Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer)
+    } catch (error) {
+      mapAxiosError(error, 'getFile')
+    }
   }
 
   export const getUserQuota = async (ncUserId: string) => {
@@ -72,8 +107,9 @@ export namespace NextcloudProvider {
         headers: { 'OCS-APIRequest': 'true' },
       })
       const quota = response.data?.ocs?.data?.quota
-      console.log('quota', quota)
-      if (!quota) return { used: 0, available: 0, total: 0, relative: 0 }
+      if (!quota) {
+        return { used: 0, available: 0, total: 0, relative: 0 }
+      }
       return {
         used: Number(quota.used) || 0,
         available: Number(quota.free) || 0,
@@ -83,8 +119,12 @@ export namespace NextcloudProvider {
             ? Math.round((Number(quota.used) / Number(quota.total)) * 100)
             : 0,
       }
-    } catch {
-      return { used: 0, available: 0, total: 0, relative: 0 }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        logger.warn(`getUserQuota: user not found in Nextcloud (${ncUserId})`)
+        return { used: 0, available: 0, total: 0, relative: 0 }
+      }
+      mapAxiosError(error, 'getUserQuota')
     }
   }
 }

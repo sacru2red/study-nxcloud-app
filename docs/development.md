@@ -165,7 +165,7 @@ curl http://localhost:3000/api/tenants/tenant-b/files \
 
 ## RAG 응답 시간 벤치마크
 
-과제 목표는 PDF 200MB 이하 기준 **질의응답 10초 이내**입니다. 로컬에서 측정 예:
+목표는 PDF 200MB 이하 기준 **질의응답 10초 이내**입니다. 로컬에서 측정 예:
 
 ```bash
 # 로그인 후 TOKEN, FILE_ID 설정
@@ -183,5 +183,5 @@ curl -o /dev/null -s -w "total=%{time_total}s\n" \
 - [README.md](../README.md) — 프로젝트 개요
 - [api-examples.md](./api-examples.md) — API 응답 예시
 - [logging-policy.md](./logging-policy.md) — 로그·채팅 보관 정책
-- [requirements-checklist.md](./requirements-checklist.md) — 과제 체크리스트
+- [requirements-checklist.md](./requirements-checklist.md) — 요구사항 충족 체크리스트
 - [nestia-guide.md](./nestia-guide.md) — Nestia 사용 가이드

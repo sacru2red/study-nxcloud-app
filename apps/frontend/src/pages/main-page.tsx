@@ -133,6 +133,28 @@ export function MainPage() {
           )}
         </section>
 
+        {retryMutation.isError && (
+          <div className="mb-3 rounded-lg bg-primary-soft p-2.5 text-xs text-error">
+            재시도 실패:{' '}
+            {retryMutation.error instanceof Error
+              ? retryMutation.error.message
+              : '서버에 연결할 수 없습니다. Docker(Postgres)가 실행 중인지 확인하세요.'}
+          </div>
+        )}
+
+        {retryMutation.isSuccess && retryMutation.data && (
+          <div
+            className={
+              'mb-3 rounded-lg p-2.5 text-xs' +
+              (retryMutation.data.action === 'already_running'
+                ? ' bg-storm-mist/30 text-storm-deep'
+                : ' bg-storm-mist/30 text-storm-deep')
+            }
+          >
+            {retryMutation.data.message}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="py-8 text-center text-sm text-graphite">Loading...</div>
         ) : !docs || docs.length === 0 ? (
@@ -181,7 +203,10 @@ export function MainPage() {
                           doc.indexStatus,
                         )}
                         indexProgress={progressByDocumentId.get(doc.documentId)}
-                        isRetryPending={retryMutation.isPending}
+                        isRetryPending={
+                          retryMutation.isPending &&
+                          retryMutation.variables === doc.documentId
+                        }
                         onSelect={(documentId) =>
                           handleSelectFile(documentId, doc.folderId)
                         }

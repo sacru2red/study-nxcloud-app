@@ -2,6 +2,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     container_name: nxcloud-postgres
+    restart: always
     environment:
       POSTGRES_DB: nxcloud_app
       POSTGRES_USER: nxcloud
@@ -21,6 +22,7 @@ services:
   nextcloud:
     image: nextcloud:latest
     container_name: nxcloud-nextcloud
+    restart: always
     environment:
       NEXTCLOUD_ADMIN_USER: admin
       NEXTCLOUD_ADMIN_PASSWORD: admin123

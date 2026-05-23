@@ -147,6 +147,7 @@ function toIndexProgress(
     totalChunks: data.totalChunks,
     embeddedChunks: data.embeddedChunks,
     pageCount: data.pageCount,
+    diagnostic: data.diagnostic ?? null,
   }
 }
 

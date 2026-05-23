@@ -22,6 +22,9 @@ export function DocumentFileListItem({
   onDownload,
   onRetry,
 }: DocumentFileListItemProps) {
+  const retryDisabled =
+    isRetryPending || indexProgress?.diagnostic?.retryRecommended === false
+
   return (
     <li
       data-document-id={doc.documentId}
@@ -73,10 +76,16 @@ export function DocumentFileListItem({
             event.stopPropagation()
             onRetry(doc.documentId)
           }}
-          disabled={isRetryPending}
+          disabled={retryDisabled}
+          title={retryDisabled && indexProgress?.diagnostic ? indexProgress.diagnostic.hint : undefined}
           className="mt-1 w-full rounded border border-accent-sale/30 bg-accent-sale-soft px-2 py-1 text-xs text-accent-sale hover:bg-accent-sale-soft/80 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isRetryPending ? '재시도 중...' : '재시도'}
+          {isRetryPending
+            ? '재시도 중...'
+            : indexProgress?.diagnostic?.code === 'EMBEDDING_ACTIVE' ||
+                indexProgress?.diagnostic?.code === 'EMBEDDING_RATE_LIMITED'
+              ? '임베딩 진행 중'
+              : '재시도'}
         </button>
       )}
     </li>

@@ -24,6 +24,21 @@ export namespace FilesDto {
 
   export type IndexPhase = 'queued' | 'extracting' | 'chunking' | 'embedding' | 'completed' | 'failed'
 
+  export type IndexDiagnosticCode =
+    | 'EMBEDDING_ACTIVE'
+    | 'EMBEDDING_STALLED'
+    | 'EMBEDDING_RATE_LIMITED'
+    | 'AWAITING_WORKER'
+
+  export interface IndexDiagnostic {
+    code: IndexDiagnosticCode
+    message: string
+    hint: string
+    retryRecommended: boolean
+    httpStatus?: number | null
+    apiError?: string | null
+  }
+
   export interface IndexStatusResponse {
     documentId: string & tags.Format<'uuid'>
     status: string
@@ -35,11 +50,16 @@ export namespace FilesDto {
     embeddedChunks: number
     chunkCount: number
     fileSize: number
+    diagnostic: IndexDiagnostic | null
   }
+
+  export type RetryAction = 'resumed' | 'already_running' | 'completed' | 'restarted'
 
   export interface RetryResponse {
     documentId: string & tags.Format<'uuid'>
     status: string
     resumed: boolean
+    action: RetryAction
+    message: string
   }
 }

@@ -5,6 +5,15 @@ import { NextcloudProvider } from './nextcloud.provider'
 import { PdfWorkerProvider } from './pdf-worker.provider'
 import { normalizeUploadFileName } from '../common/decode-upload-filename'
 import { buildIndexProgressSnapshot } from '../common/index-status.util'
+import { IndexJobTracker, PROGRESS_STALL_MS } from '../common/index-job-tracker'
+
+function formatRetryDuration(remainingChunks: number): string {
+  const ms = remainingChunks * 1_500
+  if (ms < 60_000) {
+    return `약 ${Math.max(30, Math.round(ms / 1000))}초`
+  }
+  return `약 ${Math.ceil(ms / 60_000)}분`
+}
 
 export namespace FilesProvider {
   const toResponse = (doc: Document) => {
@@ -114,7 +123,13 @@ export namespace FilesProvider {
   export const retryIndex = async (
     documentId: string,
     tenantId: string,
-  ): Promise<{ documentId: string; status: string; resumed: boolean }> => {
+  ): Promise<{
+    documentId: string
+    status: string
+    resumed: boolean
+    action: 'resumed' | 'already_running' | 'completed' | 'restarted'
+    message: string
+  }> => {
     const doc = await prisma.document.findFirst({
       where: { documentId, tenantId },
     })
@@ -141,18 +156,51 @@ export namespace FilesProvider {
           indexedAt: new Date(),
         },
       })
-      return { documentId, status: 'COMPLETED', resumed: false }
+      return {
+        documentId,
+        status: 'COMPLETED',
+        resumed: false,
+        action: 'completed',
+        message: '모든 청크 임베딩이 완료되어 문서를 COMPLETED로 표시했습니다.',
+      }
     }
 
     if (totalChunks > 0) {
+      const idleMs = Date.now() - doc.updatedAt.getTime()
+      const progressStalled =
+        idleMs >= PROGRESS_STALL_MS ||
+        IndexJobTracker.isProgressStalled(documentId, embeddedChunks)
+
+      if (IndexJobTracker.isActive(documentId) && !progressStalled) {
+        const remaining = totalChunks - embeddedChunks
+        return {
+          documentId,
+          status: 'PROCESSING',
+          resumed: false,
+          action: 'already_running',
+          message: `임베딩 진행 중 (${embeddedChunks}/${totalChunks}). 남은 ${remaining}개 · ${formatRetryDuration(remaining)} 예상 — 숫자가 오르면 재시도하지 않아도 됩니다.`,
+        }
+      }
+
+      if (IndexJobTracker.isActive(documentId) && progressStalled) {
+        IndexJobTracker.finish(documentId)
+      }
+
       await prisma.document.update({
         where: { documentId },
         data: { indexStatus: 'PROCESSING' },
       })
+      const remaining = totalChunks - embeddedChunks
       PdfWorkerProvider.resumeDocument(documentId).catch((err) => {
         console.error(`[PdfWorker] Resume failed for document ${documentId}:`, err)
       })
-      return { documentId, status: 'PROCESSING', resumed: true }
+      return {
+        documentId,
+        status: 'PROCESSING',
+        resumed: true,
+        action: 'resumed',
+        message: `임베딩 재개 (${embeddedChunks}/${totalChunks} 완료). 남은 ${remaining}개 청크를 처리합니다.`,
+      }
     }
 
     await prisma.documentChunk.deleteMany({ where: { documentId } })
@@ -170,6 +218,12 @@ export namespace FilesProvider {
       console.error(`[PdfWorker] Retry failed for document ${documentId}:`, err)
     })
 
-    return { documentId, status: 'PENDING', resumed: false }
+    return {
+      documentId,
+      status: 'PENDING',
+      resumed: false,
+      action: 'restarted',
+      message: '청크가 없어 처음부터 인덱싱을 다시 시작합니다.',
+    }
   }
 }

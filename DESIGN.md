@@ -1,6 +1,6 @@
 ## Overview
 
-The product reads like a long-running consumer-electronics catalog crossed with an enterprise-software product page. The whole system sits on **pure white** (`{colors.canvas}` — `#ffffff` / `oklch(100% 0 0)`) with warm-tinted gray panels (`{colors.cloud}` / `{colors.fog}`) for alternating section bands. There is one chromatic action color — **Signal Red** (`{colors.primary}` — `#E83A3D` / `oklch(61.5% 0.210 25.2)`) — and one ink color (`{colors.ink}` — `#1a1a1a` / `oklch(21.8% 0 0)`); together they do ninety percent of the work. Type is a single family across every surface: **Inter** (open substitute for proprietary display faces), set at weight 500 for headlines and 400 for body — clean, neutral, slightly mechanical.
+The product reads like a long-running consumer-electronics catalog crossed with an enterprise-software product page. The whole system sits on **pure white** (`{colors.canvas}` — `#ffffff` / `oklch(100% 0 0)`) with warm-tinted gray panels (`{colors.cloud}` / `{colors.fog}`) for alternating section bands. There is one chromatic action color — **Signal Red** (`{colors.primary}` — `#E83A3D` / `oklch(61.5% 0.210 25.2)`) — and one ink color (`{colors.ink}` — `#1a1a1a` / `oklch(21.8% 0 0)`); together they do ninety percent of the work. Type is a single family across every surface: **[SUITE](https://sun.fo/suite/)** (Sun Typeface, SIL OFL), set at weight 500 for headlines and 400 for body — geometric, concise, tuned for Korean UI headlines.
 
 The signature gesture is **angular red chevrons** — sharp 0-radius slashes derived from the wordmark's pair of parallel slashes — that anchor the homepage hero, category hubs, and pricing pages. They appear on the left and right edges of the primary banner card, layered behind product photography. Outside those decorative slashes, every other surface is rectilinear with **soft 8–16px corners** on cards and a 4px corner on buttons.
 
@@ -10,7 +10,7 @@ The system breaks into three voice modes: a **white commercial body** for produc
 
 - Pure white canvas (`{colors.canvas}`) with deep ink (`{colors.ink}`) running every body surface; warm fog bands (`{colors.cloud}`, `{colors.fog}`) alternate for section rhythm
 - Signal Red (`{colors.primary}`) is the lone CTA fill; it appears at most twice per viewport
-- Inter across every surface — display, body, button, caption — at weights 400 / 500 / 600 / 700
+- SUITE across every surface — display, body, button, caption — at weights 400 / 500 / 600 / 700
 - Cards round at `{rounded.xl}` (16px) for product/pricing tiles; buttons sit at `{rounded.md}` (4px) with capitalize labels
 - Geometric red chevrons (`{colors.primary}` rectangles cut at 45°) frame hero photography and reinforce the wordmark
 - Dark ink slabs (`{colors.ink}`) close every page rhythm — testimonial bands, "how can we help?" prelude, and the footer
@@ -66,9 +66,26 @@ The system breaks into three voice modes: a **white commercial body** for produc
 
 ### Font Family
 
-The voice is **single-family**: Inter (system-ui, sans-serif fallback) across every surface — display, body, button, caption. Inter is a neutral grotesque tuned for UI density and small optical sizes. The system runs weight 400 for body, 500 for display headlines, 600/700 for emphasis and button labels.
+The voice is **single-family**: [SUITE](https://sun.fo/suite/) (`'SUITE Variable'`, `'SUITE'`, system-ui, sans-serif) across every surface — display, body, button, caption. SUITE is a geometric UI headline typeface: restrained decoration, square/round neutral forms, and vertical metrics aligned for icons and buttons beside text. It is optimized for embedding and web (woff2 under 200kb for Korean syllables). The system runs weight 400 for body, 500 for display headlines, 600/700 for emphasis and button labels.
 
-The 16/14/12-px caption tier carries the catalog metadata — model numbers, spec rows, fine print — at weight 400 with a 1.4–1.5 line-height. Button labels lift to weight 600/700 with positive 0.5–1.1px letter-spacing and uppercase transform — the only place the system tracks letters.
+**Webfont (implementation):**
+
+```html
+<link
+  href="https://cdn.jsdelivr.net/gh/sun-typeface/SUITE@2/fonts/variable/woff2/SUITE-Variable.css"
+  rel="stylesheet"
+/>
+```
+
+```css
+body {
+  font-family: 'SUITE Variable', 'SUITE', ui-sans-serif, system-ui, sans-serif;
+}
+```
+
+Static builds may use the [static woff2 bundle](https://cdn.jsdelivr.net/gh/sun-typeface/SUITE@2/fonts/static/woff2/SUITE.css) instead. License: SIL Open Font License (commercial use permitted).
+
+The 16/14/12-px caption tier carries the catalog metadata — model numbers, spec rows, fine print — at weight 400 with a 1.4–1.5 line-height. Button labels lift to weight 600/700 with positive 0.5–1.1px letter-spacing and uppercase transform — the only place the system tracks letters. Use OpenType `tnum` (tabular figures) for storage quotas, percentages, and table columns when figures must align.
 
 ### Hierarchy
 
@@ -95,14 +112,14 @@ The 16/14/12-px caption tier carries the catalog metadata — model numbers, spe
 
 The typographic decision worth flagging: the system runs **weight 500 for every display size**, including the largest 72px hero headline. Most editorial systems jump to 600/700 at hero scale; this one doesn't. The result feels open and approachable rather than commanding — appropriate for consumer and enterprise audiences in the same catalog.
 
-Inter's neutral shapes pair with warm neutrals and Signal Red accents. There's no italic in the system except inside legal disclaimers; emphasis is carried by weight (500 → body-emphasis, 700 → caption-bold) instead.
+SUITE's geometric rhythm pairs with warm neutrals and Signal Red accents. There's no italic in the system except inside legal disclaimers; emphasis is carried by weight (500 → body-emphasis, 700 → caption-bold) instead.
 
 ### Note on Font Substitutes
 
-Inter is the canonical stack. Alternates if Inter is unavailable:
+SUITE is the canonical stack. Alternates if the CDN or font files fail to load:
 
-- **Manrope** at weights 400 / 500 / 600 / 700 — gentler curves; use directly with no metric adjustment
-- **Roboto** at weights 400 / 500 / 700 — flatter character; last-resort fallback
+- **Pretendard** at weights 400 / 500 / 600 / 700 — closest Korean UI grotesque; use with no metric adjustment
+- **Noto Sans KR** at weights 400 / 500 / 700 — system fallback for Korean body copy
 
 Set body line-height to 1.4 and display line-height to 1.0 explicitly — display line-height tokens are tight, and most substitutes default looser.
 
@@ -332,7 +349,7 @@ Hero photography sits in `{rounded.xl}` (16px) frames with no border. Product fa
 ### Do
 
 - Reserve `{colors.primary}` for the primary CTA and `chevron-decoration` motif — at most twice per viewport; use `{colors.primary-deep}` for inline links
-- Set every headline in Inter at weight 500 with line-height 1.0 — resist the urge to bump weight at hero scale
+- Set every headline in SUITE at weight 500 with line-height 1.0 — resist the urge to bump weight at hero scale
 - Use `{rounded.xl}` (16px) for cards and photo frames; `{rounded.md}` (4px) for buttons and inputs — keep the two-tier split sharp
 - Pair white `{colors.canvas}` body bands with `{colors.cloud}` (`#faf6f6` / `oklch(97.6% 0.004 25.2)`) alternating bands; let the warm gray do the breathing
 - Close every page rhythm with a dark ink `{colors.ink}` slab — the "How can we help?" prelude + footer
@@ -345,7 +362,7 @@ Hero photography sits in `{rounded.xl}` (16px) frames with no border. Product fa
 - Don't introduce secondary saturated colors outside `{colors.primary}` family + `{colors.accent-sale}` sale tags + `{colors.storm-*}` status/infographic accents + `{colors.semantic-error}` feedback
 - Don't apply heavy material shadows — depth is via color contrast (cloud vs. white) and Soft Lift only
 - Don't round buttons above `{rounded.md}` (4px); a soft 8px+ button reads as a different brand
-- Don't run Inter below 12px — small caption at 11px is the floor
+- Don't run SUITE below 12px — small caption at 11px is the floor
 - Don't use the chevron decoration as inline noise; it is a hero-only architectural element tied to the wordmark
 - Don't drop ink text opacity to create hierarchy — switch surface or shift to `{colors.charcoal}` / `{colors.graphite}` instead
 - Don't use `{colors.primary}` for 16px body links on white — use `{colors.primary-deep}` for AA contrast

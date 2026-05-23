@@ -6,6 +6,21 @@ export type IndexProgressPhase =
   | 'completed'
   | 'failed'
 
+export type IndexDiagnosticCode =
+  | 'EMBEDDING_ACTIVE'
+  | 'EMBEDDING_STALLED'
+  | 'EMBEDDING_RATE_LIMITED'
+  | 'AWAITING_WORKER'
+
+export interface IndexDiagnosticData {
+  code: IndexDiagnosticCode
+  message: string
+  hint: string
+  retryRecommended: boolean
+  httpStatus?: number | null
+  apiError?: string | null
+}
+
 export interface IndexProgressData {
   phase: IndexProgressPhase
   progressPercent: number
@@ -13,6 +28,7 @@ export interface IndexProgressData {
   totalChunks?: number
   embeddedChunks?: number
   pageCount?: number
+  diagnostic?: IndexDiagnosticData | null
 }
 
 interface IndexProgressDisplayProps {
@@ -55,6 +71,24 @@ export function IndexProgressDisplay({ progress, compact = false }: IndexProgres
       </div>
       {!compact && (
         <p className="text-[11px] leading-snug text-graphite">{progress.message}</p>
+      )}
+      {progress.diagnostic && (
+        <p
+          className={
+            'leading-snug' +
+            (compact ? ' mt-1 text-[10px]' : ' mt-1 text-[11px]') +
+            (progress.diagnostic.code === 'EMBEDDING_STALLED'
+              ? ' text-accent-sale'
+              : progress.diagnostic.code === 'EMBEDDING_RATE_LIMITED'
+                ? ' text-accent-sale'
+                : progress.diagnostic.code === 'EMBEDDING_ACTIVE'
+                  ? ' text-storm-deep'
+                  : ' text-graphite')
+          }
+        >
+          <span className="font-medium">{progress.diagnostic.message}</span>
+          <span className="text-graphite"> {progress.diagnostic.hint}</span>
+        </p>
       )}
     </div>
   )

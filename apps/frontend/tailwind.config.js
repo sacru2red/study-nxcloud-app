@@ -46,7 +46,8 @@ module.exports = {
       },
       fontFamily: {
         sans: [
-          'Inter',
+          '"SUITE Variable"',
+          'SUITE',
           'ui-sans-serif',
           'system-ui',
           'sans-serif',

@@ -2,6 +2,8 @@ import pdfParse from 'pdf-parse'
 import { prisma } from '../prisma'
 import { NextcloudProvider } from './nextcloud.provider'
 import { EmbeddingProvider } from './embedding.provider'
+import { IndexJobTracker } from '../common/index-job-tracker'
+import { describeEmbedApiError } from '../common/embed-api-error.util'
 
 const pdf = pdfParse as unknown as (
   dataBuffer: Buffer,
@@ -22,39 +24,43 @@ export namespace PdfWorkerProvider {
     const doc = await prisma.document.findUnique({ where: { documentId } })
     if (!doc) return
 
-    const totalChunks = await prisma.documentChunk.count({ where: { documentId } })
-    const embeddedChunks = await countEmbeddedChunks(documentId)
+    try {
+      const totalChunks = await prisma.documentChunk.count({ where: { documentId } })
+      const embeddedAtStart = await countEmbeddedChunks(documentId)
 
-    if (totalChunks > 0) {
-      if (embeddedChunks >= totalChunks) {
+      if (totalChunks > 0) {
+        if (embeddedAtStart >= totalChunks) {
+          await markCompleted(documentId, doc.pageCount, totalChunks)
+          return
+        }
+
         await prisma.document.update({
           where: { documentId },
-          data: {
-            indexStatus: 'COMPLETED',
-            chunkCount: totalChunks,
-            indexedAt: new Date(),
-          },
+          data: { indexStatus: 'PROCESSING' },
         })
+
+        const pending = await listChunksMissingEmbedding(documentId)
+        await embedPendingChunks(documentId, doc.tenantId, pending, embeddedAtStart, totalChunks)
+        await markCompleted(documentId, doc.pageCount, totalChunks)
         return
       }
 
+      if (doc.pageCount > 0) {
+        await runChunkAndEmbedFromStoredPdf(documentId, doc)
+        return
+      }
+
+      await runFullPipeline(documentId)
+    } catch (error) {
+      const detail = describeEmbedApiError(error)
+      IndexJobTracker.recordTransientError(documentId, detail.message, detail.httpStatus)
       await prisma.document.update({
         where: { documentId },
-        data: { indexStatus: 'PROCESSING' },
+        data: { indexStatus: 'FAILED' },
       })
-
-      const pending = await listChunksMissingEmbedding(documentId)
-      await embedPendingChunks(documentId, doc.tenantId, pending)
-      await markCompleted(documentId, doc.pageCount, totalChunks)
-      return
+      console.error(`[PdfWorker] Resume failed for document ${documentId}:`, detail.message)
+      throw error
     }
-
-    if (doc.pageCount > 0) {
-      await runChunkAndEmbedFromStoredPdf(documentId, doc)
-      return
-    }
-
-    await runFullPipeline(documentId)
   }
 }
 
@@ -107,13 +113,16 @@ async function runFullPipeline(documentId: string) {
 
     const totalChunks = await persistChunks(documentId, doc.tenantId, chunkPages(pages))
     const pending = await listChunksMissingEmbedding(documentId)
-    await embedPendingChunks(documentId, doc.tenantId, pending)
+    await embedPendingChunks(documentId, doc.tenantId, pending, 0, totalChunks)
     await markCompleted(documentId, pages.length, totalChunks)
   } catch (error) {
+    const detail = describeEmbedApiError(error)
+    IndexJobTracker.recordTransientError(documentId, detail.message, detail.httpStatus)
     await prisma.document.update({
       where: { documentId },
       data: { indexStatus: 'FAILED' },
     })
+    console.error(`[PdfWorker] Pipeline failed for document ${documentId}:`, detail.message)
     throw error
   }
 }
@@ -171,13 +180,17 @@ async function runChunkAndEmbedFromStoredPdf(
     })
 
     const pending = await listChunksMissingEmbedding(documentId)
-    await embedPendingChunks(documentId, doc.tenantId, pending)
+    const embeddedBefore = await countEmbeddedChunks(documentId)
+    await embedPendingChunks(documentId, doc.tenantId, pending, embeddedBefore, totalChunks)
     await markCompleted(documentId, pages.length, totalChunks)
   } catch (error) {
+    const detail = describeEmbedApiError(error)
+    IndexJobTracker.recordTransientError(documentId, detail.message, detail.httpStatus)
     await prisma.document.update({
       where: { documentId },
       data: { indexStatus: 'FAILED' },
     })
+    console.error(`[PdfWorker] Pipeline failed for document ${documentId}:`, detail.message)
     throw error
   }
 }
@@ -231,12 +244,47 @@ async function embedPendingChunks(
   documentId: string,
   tenantId: string,
   pending: Array<{ chunkId: string; text: string }>,
+  embeddedBefore = 0,
+  totalChunks?: number,
 ) {
   if (pending.length === 0) {
     return
   }
 
-  await EmbeddingProvider.batchEmbedAndStore(tenantId, pending)
+  console.log(`[PdfWorker] embedPendingChunks start documentId=${documentId} pending=${pending.length}`)
+
+  const ownsJob = !IndexJobTracker.isActive(documentId)
+  if (ownsJob) {
+    IndexJobTracker.start(documentId, 'embedding', embeddedBefore)
+  }
+
+  try {
+    let doneInBatch = 0
+    await EmbeddingProvider.batchEmbedAndStore(tenantId, pending, {
+      documentId,
+      onChunkDone: async () => {
+        doneInBatch += 1
+        const embeddedNow = embeddedBefore + doneInBatch
+        IndexJobTracker.recordProgress(documentId, embeddedNow)
+        if (doneInBatch % 10 === 0) {
+          await prisma.document.update({
+            where: { documentId },
+            data: {
+              updatedAt: new Date(),
+              ...(totalChunks !== undefined ? { chunkCount: totalChunks } : {}),
+            },
+          })
+        }
+      },
+    })
+  } finally {
+    if (ownsJob) {
+      const job = IndexJobTracker.get(documentId)
+      if (!job?.lastError) {
+        IndexJobTracker.finish(documentId)
+      }
+    }
+  }
 }
 
 async function markCompleted(documentId: string, pageCount: number, chunkCount: number) {

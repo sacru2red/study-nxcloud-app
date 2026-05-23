@@ -58,10 +58,10 @@ export function PdfViewer({ fileId, fileName, targetPage }: PdfViewerProps) {
 
   if (!fileId || !fileName) {
     return (
-      <div className="flex flex-1 items-center justify-center text-gray-400">
+      <div className="flex flex-1 items-center justify-center text-graphite">
         <div className="text-center">
           <svg
-            className="mx-auto mb-3 h-12 w-12 text-gray-300"
+            className="mx-auto mb-3 h-12 w-12 text-steel"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -81,13 +81,13 @@ export function PdfViewer({ fileId, fileName, targetPage }: PdfViewerProps) {
 
   if (loadError) {
     return (
-      <div className="flex flex-1 items-center justify-center text-gray-400">
+      <div className="flex flex-1 items-center justify-center text-graphite">
         <div className="text-center">
-          <p className="text-sm text-red-500">Failed to load PDF</p>
-          <p className="mt-1 text-xs text-gray-500">{loadError}</p>
+          <p className="text-sm text-error">Failed to load PDF</p>
+          <p className="mt-1 text-xs text-graphite">{loadError}</p>
           <button
             onClick={() => setLoadError(null)}
-            className="mt-2 text-xs text-blue-500 hover:underline"
+            className="mt-2 text-xs text-primary-deep hover:underline"
           >
             Retry
           </button>
@@ -114,22 +114,22 @@ export function PdfViewer({ fileId, fileName, targetPage }: PdfViewerProps) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-1 items-start justify-center overflow-auto bg-gray-100 p-4">
+      <div className="flex flex-1 items-start justify-center overflow-auto bg-fog p-4">
         <Document
           file={fileSource}
           onLoadSuccess={handleLoadSuccess}
           onLoadError={handleLoadError}
-          loading={<p className="text-sm text-gray-500">Loading PDF...</p>}
-          error={<p className="text-sm text-red-500">Failed to load PDF</p>}
+          loading={<p className="text-sm text-graphite">Loading PDF...</p>}
+          error={<p className="text-sm text-error">Failed to load PDF</p>}
         >
           <Page pageNumber={currentPage} renderTextLayer={false} renderAnnotationLayer={false} />
         </Document>
       </div>
-      <div className="flex items-center justify-center gap-4 border-t bg-gray-50 px-4 py-2 text-xs text-gray-500">
+      <div className="flex items-center justify-center gap-4 border-t border-fog bg-cloud px-4 py-2 text-xs text-graphite">
         <button
           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
           disabled={currentPage <= 1}
-          className="rounded px-2 py-1 hover:bg-gray-200 disabled:opacity-30"
+          className="rounded px-2 py-1 hover:bg-fog disabled:opacity-30"
         >
           Previous
         </button>
@@ -140,7 +140,7 @@ export function PdfViewer({ fileId, fileName, targetPage }: PdfViewerProps) {
         <button
           onClick={() => setCurrentPage((p) => p + 1)}
           disabled={!totalPages || currentPage >= totalPages}
-          className="rounded px-2 py-1 hover:bg-gray-200 disabled:opacity-30"
+          className="rounded px-2 py-1 hover:bg-fog disabled:opacity-30"
         >
           Next
         </button>

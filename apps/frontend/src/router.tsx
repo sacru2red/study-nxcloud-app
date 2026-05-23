@@ -16,13 +16,13 @@ function AppHeader() {
   return (
     <header className="flex items-center justify-between border-b px-6 py-3">
       <h1 className="text-lg font-bold">Document AI Chat</h1>
-      <div className="flex items-center gap-4 text-sm text-gray-600">
+      <div className="flex items-center gap-4 text-sm text-charcoal">
         {quota && <StorageIndicator usedBytes={quota.usedBytes} quotaBytes={quota.quotaBytes} />}
         <span>{user.email}</span>
-        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs">{user.role}</span>
+        <span className="rounded bg-fog px-2 py-0.5 text-xs">{user.role}</span>
         <button
           onClick={doLogout}
-          className="rounded bg-red-50 px-3 py-1 text-xs text-red-600 hover:bg-red-100"
+          className="rounded bg-primary-soft px-3 py-1 text-xs text-error hover:bg-primary-ghost"
         >
           logout
         </button>

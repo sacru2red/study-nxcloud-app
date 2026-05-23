@@ -73,15 +73,15 @@ export function FolderChatPanel({ folderId, tenantId }: FolderChatPanelProps) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-white">
-      <div className="border-b px-4 py-3">
-        <h2 className="text-sm font-semibold text-gray-800">Folder AI Chat</h2>
-        <p className="mt-0.5 text-xs text-gray-400">폴더: {folderId}</p>
+    <div className="flex min-h-0 flex-1 flex-col bg-canvas">
+      <div className="border-b border-fog px-4 py-3">
+        <h2 className="text-sm font-semibold text-ink">Folder AI Chat</h2>
+        <p className="mt-0.5 text-xs text-graphite">폴더: {folderId}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-graphite">
             이 폴더에 속한 PDF들을 함께 검색해 답변합니다.
           </p>
         ) : (
@@ -92,15 +92,15 @@ export function FolderChatPanel({ folderId, tenantId }: FolderChatPanelProps) {
                   <div
                     className={
                       msg.role === 'user'
-                        ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-blue-500 px-4 py-2 text-sm text-white'
-                        : 'max-w-[80%] rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-2 text-sm text-gray-800'
+                        ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-white'
+                        : 'max-w-[80%] rounded-2xl rounded-bl-sm bg-fog px-4 py-2 text-sm text-ink'
                     }
                   >
                     {msg.content}
                   </div>
                 </div>
                 {msg.diagnosticsReason && (
-                  <p className="mt-1 text-xs text-amber-600">진단: {msg.diagnosticsReason}</p>
+                  <p className="mt-1 text-xs text-accent-sale">진단: {msg.diagnosticsReason}</p>
                 )}
                 {msg.sources && msg.sources.length > 0 && (
                   <div className="mt-2 space-y-2">
@@ -112,14 +112,14 @@ export function FolderChatPanel({ folderId, tenantId }: FolderChatPanelProps) {
               </div>
             ))}
             {chatMutation.isPending && (
-              <div className="text-sm text-gray-400">Thinking...</div>
+              <div className="text-sm text-graphite">Thinking...</div>
             )}
             <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
-      <div className="border-t p-4">
+      <div className="border-t border-fog p-4">
         <div className="flex gap-2">
           <input
             type="text"
@@ -133,12 +133,12 @@ export function FolderChatPanel({ folderId, tenantId }: FolderChatPanelProps) {
             }}
             placeholder="Ask about documents in this folder..."
             disabled={chatMutation.isPending}
-            className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:border-blue-400"
+            className="flex-1 rounded-lg border border-steel px-3 py-2 text-sm outline-none focus:border-primary"
           />
           <button
             onClick={handleSubmit}
             disabled={chatMutation.isPending || !input.trim()}
-            className="rounded-lg bg-blue-500 px-4 py-2 text-sm text-white hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary-deep disabled:opacity-50"
           >
             Send
           </button>

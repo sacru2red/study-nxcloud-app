@@ -27,27 +27,27 @@ export function DocumentFileListItem({
       data-document-id={doc.documentId}
       onClick={() => onSelect(doc.documentId)}
       className={
-        'cursor-pointer rounded-md border bg-white p-2.5 text-sm hover:shadow-sm' +
-        (isSelected ? ' border-blue-400 ring-1 ring-blue-200' : ' border-gray-100')
+        'cursor-pointer rounded-md border bg-canvas p-2.5 text-sm hover:shadow-sm' +
+        (isSelected ? ' border-primary ring-1 ring-primary-soft' : ' border-fog')
       }
     >
-      <p className="truncate font-medium text-gray-800">{doc.fileName}</p>
+      <p className="truncate font-medium text-ink">{doc.fileName}</p>
       <div className="mt-1 flex items-center gap-2">
         <span
           className={
             'inline-block rounded px-1.5 py-0.5 text-xs font-medium' +
             (displayIndexStatus === 'COMPLETED'
-              ? ' bg-green-100 text-green-700'
+              ? ' bg-storm-mist/40 text-storm-deep'
               : displayIndexStatus === 'PENDING'
-                ? ' bg-yellow-100 text-yellow-700'
+                ? ' bg-accent-sale-soft text-accent-sale'
                 : displayIndexStatus === 'PROCESSING'
-                  ? ' bg-blue-100 text-blue-700'
-                  : ' bg-red-100 text-red-700')
+                  ? ' bg-primary-soft text-primary-deep'
+                  : ' bg-primary-soft text-error')
           }
         >
           {displayIndexStatus}
         </span>
-        <span className="text-xs text-gray-400">{(doc.fileSize / 1024).toFixed(1)} KB</span>
+        <span className="text-xs text-graphite">{(doc.fileSize / 1024).toFixed(1)} KB</span>
       </div>
       {indexProgress &&
         (displayIndexStatus === 'PENDING' ||
@@ -62,7 +62,7 @@ export function DocumentFileListItem({
           onDownload(doc.ncDownloadUrl, doc.fileName)
         }}
         disabled={!doc.ncDownloadUrl}
-        className="mt-2 w-full rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-2 w-full rounded border border-fog px-2 py-1 text-xs text-charcoal hover:bg-cloud disabled:cursor-not-allowed disabled:opacity-50"
       >
         다운로드
       </button>
@@ -74,7 +74,7 @@ export function DocumentFileListItem({
             onRetry(doc.documentId)
           }}
           disabled={isRetryPending}
-          className="mt-1 w-full rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-1 w-full rounded border border-accent-sale/30 bg-accent-sale-soft px-2 py-1 text-xs text-accent-sale hover:bg-accent-sale-soft/80 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isRetryPending ? '재시도 중...' : '재시도'}
         </button>

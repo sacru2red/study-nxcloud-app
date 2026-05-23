@@ -109,10 +109,10 @@ export function ChatPanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-white">
-      <div className="border-b px-4 py-3">
-        <h2 className="text-sm font-semibold text-gray-800">AI Chat</h2>
-        {fileName && <p className="mt-0.5 text-xs text-gray-400">{fileName}</p>}
+    <div className="flex min-h-0 flex-1 flex-col bg-canvas">
+      <div className="border-b border-fog px-4 py-3">
+        <h2 className="text-sm font-semibold text-ink">AI Chat</h2>
+        {fileName && <p className="mt-0.5 text-xs text-graphite">{fileName}</p>}
         {indexProgress &&
           (indexStatus === 'PENDING' ||
             indexStatus === 'PROCESSING' ||
@@ -131,7 +131,7 @@ export function ChatPanel({
                 {indexStatus === 'PENDING' || indexStatus === 'PROCESSING' ? (
                   <div className="flex flex-col items-center gap-2">
                     <svg
-                      className="h-6 w-6 animate-spin text-blue-400"
+                      className="h-6 w-6 animate-spin text-primary-bright"
                       fill="none"
                       viewBox="0 0 24 24"
                     >
@@ -149,18 +149,18 @@ export function ChatPanel({
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                       />
                     </svg>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-graphite">
                       {indexProgress?.message ?? getPlaceholder()}
                     </p>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-graphite">
                     {indexProgress?.message ?? getPlaceholder()}
                   </p>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-gray-400">{getPlaceholder()}</p>
+              <p className="text-sm text-graphite">{getPlaceholder()}</p>
             )}
           </div>
         ) : (
@@ -172,15 +172,15 @@ export function ChatPanel({
                     ref={i === lastUserMessageIndex ? lastUserMessageRef : undefined}
                     className={
                       msg.role === 'user'
-                        ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-blue-500 px-4 py-2 text-sm text-white'
-                        : 'max-w-[80%] rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-2 text-sm text-gray-800'
+                        ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-white'
+                        : 'max-w-[80%] rounded-2xl rounded-bl-sm bg-fog px-4 py-2 text-sm text-ink'
                     }
                   >
                     {msg.content}
                   </div>
                 </div>
                 {formatDiagnosticsMessage(msg.diagnosticsReason) && (
-                  <p className="mt-1 text-xs text-amber-600">
+                  <p className="mt-1 text-xs text-accent-sale">
                     {formatDiagnosticsMessage(msg.diagnosticsReason)}
                   </p>
                 )}
@@ -195,7 +195,7 @@ export function ChatPanel({
             ))}
             {chatMutation.isPending && (
               <div className="flex justify-start">
-                <div className="rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-2 text-sm text-gray-400">
+                <div className="rounded-2xl rounded-bl-sm bg-fog px-4 py-2 text-sm text-graphite">
                   <span className="flex items-center gap-1">
                     <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle
@@ -222,7 +222,7 @@ export function ChatPanel({
         )}
       </div>
 
-      <div className="border-t p-4">
+      <div className="border-t border-fog p-4">
         <div className="flex gap-2">
           <input
             type="text"
@@ -236,12 +236,12 @@ export function ChatPanel({
             }}
             placeholder={getPlaceholder()}
             disabled={isDisabled || chatMutation.isPending}
-            className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:border-blue-400 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
+            className="flex-1 rounded-lg border border-steel px-3 py-2 text-sm outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-cloud disabled:text-graphite"
           />
           <button
             onClick={handleSubmit}
             disabled={isDisabled || chatMutation.isPending || !input.trim()}
-            className="rounded-lg bg-blue-500 px-4 py-2 text-sm text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary-deep disabled:cursor-not-allowed disabled:opacity-50"
           >
             {chatMutation.isPending ? (
               <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">

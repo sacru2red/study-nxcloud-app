@@ -14,20 +14,21 @@ export function StorageIndicator({ usedBytes, quotaBytes }: StorageIndicatorProp
   if (quotaBytes <= 0) return null
 
   const percent = Math.min(100, Math.round((usedBytes / quotaBytes) * 100))
-  const barColor = percent >= 80 ? 'bg-red-500' : percent >= 50 ? 'bg-yellow-500' : 'bg-green-500'
+  const barColor =
+    percent >= 80 ? 'bg-error' : percent >= 50 ? 'bg-accent-sale' : 'bg-storm-deep'
 
   return (
-    <div className="inline-flex items-center gap-2 text-xs text-gray-500">
+    <div className="inline-flex items-center gap-2 text-xs text-graphite">
       <span>
         {formatBytes(usedBytes)} / {formatBytes(quotaBytes)}
       </span>
-      <div className="h-2 w-20 overflow-hidden rounded-full bg-gray-200">
+      <div className="h-2 w-20 overflow-hidden rounded-full bg-fog">
         <div
           className={`h-full rounded-full transition-all ${barColor}`}
           style={{ width: `${percent}%` }}
         />
       </div>
-      <span className="text-gray-400">{percent}%</span>
+      <span className="text-graphite">{percent}%</span>
     </div>
   )
 }

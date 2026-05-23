@@ -18,36 +18,36 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-xl bg-white p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-cloud">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-xl bg-canvas p-8 shadow-lg">
         <h1 className="mb-6 text-center text-2xl font-bold">Sign In</h1>
 
         {loginMutation.isError && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          <div className="mb-4 rounded-lg bg-primary-soft p-3 text-sm text-error">
             {loginMutation.error?.message || 'Login failed'}
           </div>
         )}
 
         <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+          <label className="mb-1 block text-sm font-medium text-charcoal">Email</label>
           <input
             name="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-lg border border-steel px-3 py-2 text-sm outline-none focus:border-primary"
             placeholder="user-a1@example.com"
             required
           />
         </div>
 
         <div className="mb-6">
-          <label className="mb-1 block text-sm font-medium text-gray-700">Password</label>
+          <label className="mb-1 block text-sm font-medium text-charcoal">Password</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-lg border border-steel px-3 py-2 text-sm outline-none focus:border-primary"
             placeholder="password123"
             required
           />
@@ -56,7 +56,7 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={loginMutation.isPending}
-          className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-white hover:bg-primary-deep disabled:opacity-50"
         >
           {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
         </button>

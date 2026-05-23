@@ -34,7 +34,7 @@ export function IndexProgressDisplay({ progress, compact = false }: IndexProgres
 
   return (
     <div className={compact ? 'mt-2' : 'mt-2 space-y-1'}>
-      <div className="flex items-center justify-between gap-2 text-[11px] text-gray-500">
+      <div className="flex items-center justify-between gap-2 text-[11px] text-graphite">
         <span>
           {phaseLabel} · {progress.progressPercent}%
         </span>
@@ -44,17 +44,17 @@ export function IndexProgressDisplay({ progress, compact = false }: IndexProgres
           </span>
         )}
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
+      <div className="h-1.5 overflow-hidden rounded-full bg-fog">
         <div
           className={
             'h-full rounded-full transition-all duration-500' +
-            (progress.phase === 'failed' ? ' bg-red-400' : ' bg-blue-500')
+            (progress.phase === 'failed' ? ' bg-error' : ' bg-primary')
           }
           style={{ width: `${Math.min(100, Math.max(0, progress.progressPercent))}%` }}
         />
       </div>
       {!compact && (
-        <p className="text-[11px] leading-snug text-gray-500">{progress.message}</p>
+        <p className="text-[11px] leading-snug text-graphite">{progress.message}</p>
       )}
     </div>
   )

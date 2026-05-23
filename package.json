@@ -47,9 +47,11 @@
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
     "ffmpeg-static": "^5.3.0",
+    "husky": "^9.1.7",
     "jest": "^30.4.2",
     "jiti": "2.4.2",
     "jsdom": "~22.1.0",
+    "lint-staged": "^17.0.5",
     "nestia": "^11.2.0",
     "nx": "22.7.1",
     "postcss": "8.4.38",
@@ -99,7 +101,17 @@
     "webdav": "^5.10.0"
   },
   "scripts": {
-    "prepare": "ts-patch install && nx run prisma-client:generate"
+    "prepare": "husky && ts-patch install && nx run prisma-client:generate",
+    "lint-staged": "lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "eslint --fix --no-warn-ignored",
+      "prettier --write"
+    ],
+    "*.{json,md,css,html,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "volta": {
     "node": "24.15.0"

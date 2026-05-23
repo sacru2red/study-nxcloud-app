@@ -61,6 +61,7 @@ export function useUploadFile(tenantId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['files', tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['quota'] })
     },
   })
 }

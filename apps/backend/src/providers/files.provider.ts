@@ -4,6 +4,7 @@ import { prisma } from '../prisma'
 import { NextcloudProvider } from './nextcloud.provider'
 import { PdfWorkerProvider } from './pdf-worker.provider'
 import { normalizeUploadFileName } from '../common/decode-upload-filename'
+import { QuotaProvider } from './quota.provider'
 import { buildIndexProgressSnapshot } from '../common/index-status.util'
 import { IndexJobTracker, PROGRESS_STALL_MS } from '../common/index-job-tracker'
 
@@ -54,6 +55,8 @@ export namespace FilesProvider {
     folderId?: string,
   ) => {
     const fileName = normalizeUploadFileName(file.originalname)
+    await QuotaProvider.assertUploadAllowed(ownerUserId, file.size)
+
     const ncResult = await NextcloudProvider.uploadFile(
       tenantId,
       fileName,
@@ -168,8 +171,7 @@ export namespace FilesProvider {
     if (totalChunks > 0) {
       const idleMs = Date.now() - doc.updatedAt.getTime()
       const progressStalled =
-        idleMs >= PROGRESS_STALL_MS ||
-        IndexJobTracker.isProgressStalled(documentId, embeddedChunks)
+        idleMs >= PROGRESS_STALL_MS || IndexJobTracker.isProgressStalled(documentId, embeddedChunks)
 
       if (IndexJobTracker.isActive(documentId) && !progressStalled) {
         const remaining = totalChunks - embeddedChunks

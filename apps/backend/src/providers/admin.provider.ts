@@ -1,5 +1,5 @@
 import { prisma } from '../prisma'
-import { NextcloudProvider } from './nextcloud.provider'
+import { QuotaProvider } from './quota.provider'
 
 export namespace AdminProvider {
   export const listTenants = async () => {
@@ -16,15 +16,15 @@ export namespace AdminProvider {
 
     const userUsages = await Promise.all(
       users.map(async (user) => {
-        const quota = await NextcloudProvider.getUserQuota(user.ncUserId)
+        const quota = await QuotaProvider.getUserQuota(user.userId)
         return {
           userId: user.userId,
           email: user.email,
           ncUserId: user.ncUserId,
           role: user.role,
-          usedBytes: quota.used,
-          quotaBytes: quota.total,
-          usagePercent: quota.relative,
+          usedBytes: quota.usedBytes,
+          quotaBytes: quota.quotaBytes,
+          usagePercent: quota.usagePercent,
           lastCollectedAt: collectedAt,
         }
       }),

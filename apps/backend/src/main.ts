@@ -4,6 +4,7 @@ import type { OpenAPIObject } from '@nestjs/swagger'
 import { AppModule } from './app/app.module'
 import { NestiaSwaggerComposer } from '@nestia/sdk'
 import { SwaggerModule } from '@nestjs/swagger'
+import { WebSocketAdaptor } from '@nestia/core'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
@@ -21,6 +22,7 @@ async function bootstrap() {
     SwaggerModule.setup('swagger-doc', app, document as OpenAPIObject)
   }
 
+  await WebSocketAdaptor.upgrade(app)
   const port = process.env.BACKEND_PORT || 3000
   await app.listen(port)
   Logger.log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix}`)

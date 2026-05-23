@@ -22,7 +22,13 @@ export namespace FilesDto {
     indexedAt: string | null
   }
 
-  export type IndexPhase = 'queued' | 'extracting' | 'chunking' | 'embedding' | 'completed' | 'failed'
+  export type IndexPhase =
+    | 'queued'
+    | 'extracting'
+    | 'chunking'
+    | 'embedding'
+    | 'completed'
+    | 'failed'
 
   export type IndexDiagnosticCode =
     | 'EMBEDDING_ACTIVE'
@@ -61,5 +67,17 @@ export namespace FilesDto {
     resumed: boolean
     action: RetryAction
     message: string
+  }
+
+  export interface IIndexStatusWsHeader {
+    authorization?: string
+  }
+
+  export interface IIndexStatusWsListener {
+    onStatus(snapshot: IndexStatusResponse): void
+  }
+
+  export interface IIndexStatusWsProvider {
+    stop(): void
   }
 }

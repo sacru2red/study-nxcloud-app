@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
       '/api': {
         target: `http://localhost:${process.env.BACKEND_PORT ?? 3000}`,
         changeOrigin: true,
+        ws: true,
       },
     },
   },
@@ -24,6 +25,7 @@ export default defineConfig(({ mode }) => ({
       '/api': {
         target: `http://localhost:${process.env.BACKEND_PORT ?? 3000}`,
         changeOrigin: true,
+        ws: true,
       },
     },
   },

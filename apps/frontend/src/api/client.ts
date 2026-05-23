@@ -21,9 +21,24 @@ export const getConnection = () => {
     host:
       process.env['NODE_ENV'] === 'development'
         ? new URL('/api', window.location.origin).href
-        : 'http://localhost:3000',
+        : 'http://localhost:3000/api',
     headers: {
       Authorization: accessToken ? `Bearer ${accessToken}` : '',
     },
   } satisfies IConnection
+}
+
+/** WebSocket용 연결 (HTTP /api → ws, JWT는 authorization 헤더) */
+export const getWsConnection = () => {
+  const http = getConnection()
+  const host = http.host.replace(/^http/i, 'ws').replace(/\/$/, '')
+  const authorization =
+    typeof http.headers?.Authorization === 'string' && http.headers.Authorization.length > 0
+      ? http.headers.Authorization
+      : undefined
+
+  return {
+    host,
+    headers: { authorization },
+  } satisfies IConnection<{ authorization?: string }>
 }

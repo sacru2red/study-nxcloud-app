@@ -2,6 +2,8 @@ import { prisma } from '../prisma'
 import { EmbeddingProvider } from './embedding.provider'
 import { LlmProvider } from './llm.provider'
 import { normalizeUploadFileName } from '../common/decode-upload-filename'
+import { parseBboxJson } from '../common/pdf-layout.util'
+import type { PdfBbox } from '../common/pdf-bbox.types'
 
 const SIMILARITY_THRESHOLD = 0.3
 
@@ -12,6 +14,7 @@ interface FolderChatSource {
   paragraphNo: number
   text: string
   similarity: number
+  bbox?: PdfBbox
 }
 
 export namespace FolderProvider {
@@ -53,10 +56,11 @@ export namespace FolderProvider {
       paragraph_no: number
       file_name: string
       document_id: string
+      bbox_json: string | null
       similarity: number
     }> = await prisma.$queryRawUnsafe(
       `SELECT dc.chunk_text, dc.page_no, dc.paragraph_no,
-              d.file_name, d.document_id,
+              d.file_name, d.document_id, dc.bbox_json,
               1 - (dc.embedding <=> $1::vector) as similarity
        FROM document_chunks dc
        JOIN documents d ON dc.document_id = d.document_id
@@ -79,14 +83,18 @@ export namespace FolderProvider {
     } else {
       const context = relevantResults.map((r) => `[${r.file_name}]\n${r.chunk_text}`).join('\n\n')
       answer = await LlmProvider.chat(question, context)
-      sources = relevantResults.map((r) => ({
-        documentId: r.document_id,
-        fileName: normalizeUploadFileName(r.file_name),
-        pageNo: r.page_no,
-        paragraphNo: r.paragraph_no,
-        text: r.chunk_text.slice(0, 200),
-        similarity: Math.round(r.similarity * 1000) / 1000,
-      }))
+      sources = relevantResults.map((r) => {
+        const bbox = parseBboxJson(r.bbox_json)
+        return {
+          documentId: r.document_id,
+          fileName: normalizeUploadFileName(r.file_name),
+          pageNo: r.page_no,
+          paragraphNo: r.paragraph_no,
+          text: r.chunk_text.slice(0, 200),
+          similarity: Math.round(r.similarity * 1000) / 1000,
+          ...(bbox ? { bbox } : {}),
+        }
+      })
     }
 
     await prisma.chatMessage.createMany({

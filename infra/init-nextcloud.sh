@@ -70,4 +70,40 @@ set_quota "user-b1" "100 MB"
 set_quota "user-b2" "100 MB"
 set_quota "user-b3" "100 MB"
 
+upload_quota_sample() {
+  local uid="user-a1"
+  local pwd="password123"
+  local remote_name="quota-sample.bin"
+  local dav_url="$NC_URL/remote.php/dav/files/$uid/$remote_name"
+  local tmp_file
+  tmp_file="$(mktemp)"
+
+  echo "Ensuring quota sample (~52MB) for $uid..."
+
+  if curl -sf -u "$uid:$pwd" -X HEAD "$dav_url" -o /dev/null 2>/dev/null; then
+    echo "  $remote_name already exists, skipping upload"
+    rm -f "$tmp_file"
+    return 0
+  fi
+
+  if command -v dd >/dev/null 2>&1; then
+    dd if=/dev/zero of="$tmp_file" bs=1048576 count=52 status=none 2>/dev/null || \
+      dd if=/dev/zero of="$tmp_file" bs=1048576 count=52 2>/dev/null
+  else
+    echo "  dd not found; cannot create quota sample file"
+    rm -f "$tmp_file"
+    return 1
+  fi
+
+  curl -sf -u "$uid:$pwd" -T "$tmp_file" "$dav_url" || {
+    echo "  Warning: failed to upload $remote_name (quota sample)"
+    rm -f "$tmp_file"
+    return 0
+  }
+  rm -f "$tmp_file"
+  echo "  Uploaded $remote_name for $uid"
+}
+
+upload_quota_sample
+
 echo "Nextcloud initialization complete!"

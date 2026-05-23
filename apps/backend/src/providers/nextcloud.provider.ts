@@ -1,6 +1,7 @@
 import { createClient, type FileStat, type WebDAVClient } from 'webdav'
 import axios from 'axios'
-import { HttpException, HttpStatus, Logger } from '@nestjs/common'
+import { Logger } from '@nestjs/common'
+import { throwSafeNextcloudHttpException } from '../common/nextcloud-error.util'
 
 const logger = new Logger('NextcloudProvider')
 
@@ -13,28 +14,16 @@ const client: WebDAVClient = createClient(`${ncUrl}/remote.php/dav/files/${ncUse
   password: ncPass,
 })
 
-function toSafeError(status: HttpStatus, message: string): never {
-  throw new HttpException({ message }, status)
-}
-
 function mapAxiosError(error: unknown, context: string): never {
   if (axios.isAxiosError(error)) {
-    const status = error.response?.status
     logger.error(`${context} failed`, {
-      status,
+      status: error.response?.status,
       code: error.code,
     })
-    if (status === 401 || status === 403) {
-      toSafeError(HttpStatus.SERVICE_UNAVAILABLE, 'Nextcloud authentication failed')
-    }
-    if (status && status >= 500) {
-      toSafeError(HttpStatus.SERVICE_UNAVAILABLE, 'Nextcloud service is unavailable')
-    }
-    toSafeError(HttpStatus.SERVICE_UNAVAILABLE, 'Nextcloud request failed')
+  } else {
+    logger.error(`${context} failed`, { error })
   }
-
-  logger.error(`${context} failed`, { error })
-  toSafeError(HttpStatus.SERVICE_UNAVAILABLE, 'Nextcloud request failed')
+  throwSafeNextcloudHttpException(error)
 }
 
 export namespace NextcloudProvider {
@@ -49,7 +38,6 @@ export namespace NextcloudProvider {
 
     try {
       await client.createDirectory(dirPath)
-      // eslint-disable-next-line no-empty
     } catch {
       // directory may already exist
     }

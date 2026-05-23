@@ -4,6 +4,12 @@ import { NextcloudProvider } from './nextcloud.provider'
 import { EmbeddingProvider } from './embedding.provider'
 import { IndexJobTracker } from '../common/index-job-tracker'
 import { describeEmbedApiError } from '../common/embed-api-error.util'
+import type { PdfChunkRow } from '../common/pdf-bbox.types'
+import {
+  chunkParagraphs,
+  extractPageParagraphsFromPdf,
+  serializeBbox,
+} from '../common/pdf-layout.util'
 
 const pdf = pdfParse as unknown as (
   dataBuffer: Buffer,
@@ -13,7 +19,7 @@ const CHUNK_SIZE = 500
 const CHUNK_OVERLAP = 100
 const CHUNK_PROGRESS_UPDATE_INTERVAL = 20
 
-type ChunkRow = { pageNo: number; paragraphNo: number; text: string }
+type ChunkRow = PdfChunkRow
 
 export namespace PdfWorkerProvider {
   export const processDocument = async (documentId: string) => {
@@ -77,9 +83,7 @@ async function countEmbeddedChunks(documentId: string): Promise<number> {
 async function listChunksMissingEmbedding(
   documentId: string,
 ): Promise<Array<{ chunkId: string; text: string }>> {
-  const rows = await prisma.$queryRaw<
-    Array<{ chunk_id: string; chunk_text: string }>
-  >`
+  const rows = await prisma.$queryRaw<Array<{ chunk_id: string; chunk_text: string }>>`
     SELECT chunk_id, chunk_text
     FROM document_chunks
     WHERE document_id = ${documentId}::uuid
@@ -105,16 +109,16 @@ async function runFullPipeline(documentId: string) {
 
   try {
     const buffer = await NextcloudProvider.getFile(doc.tenantId, doc.fileName)
-    const pages = await extractPages(buffer)
+    const { pageCount, chunks } = await extractChunks(buffer)
     await prisma.document.update({
       where: { documentId },
-      data: { pageCount: pages.length },
+      data: { pageCount },
     })
 
-    const totalChunks = await persistChunks(documentId, doc.tenantId, chunkPages(pages))
+    const totalChunks = await persistChunks(documentId, doc.tenantId, chunks)
     const pending = await listChunksMissingEmbedding(documentId)
     await embedPendingChunks(documentId, doc.tenantId, pending, 0, totalChunks)
-    await markCompleted(documentId, pages.length, totalChunks)
+    await markCompleted(documentId, pageCount, totalChunks)
   } catch (error) {
     const detail = describeEmbedApiError(error)
     IndexJobTracker.recordTransientError(documentId, detail.message, detail.httpStatus)
@@ -138,14 +142,13 @@ async function runChunkAndEmbedFromStoredPdf(
 
   try {
     const buffer = await NextcloudProvider.getFile(doc.tenantId, doc.fileName)
-    const pages = await extractPages(buffer)
+    const { pageCount, chunks: allChunks } = await extractChunks(buffer)
     await prisma.document.update({
       where: { documentId },
-      data: { pageCount: pages.length },
+      data: { pageCount },
     })
 
     const existingKeys = await loadExistingChunkKeys(documentId)
-    const allChunks = chunkPages(pages)
     let created = 0
 
     for (const chunk of allChunks) {
@@ -160,6 +163,7 @@ async function runChunkAndEmbedFromStoredPdf(
           pageNo: chunk.pageNo,
           paragraphNo: chunk.paragraphNo,
           chunkText: chunk.text,
+          bboxJson: serializeBbox(chunk.bbox),
         },
       })
       existingKeys.add(key)
@@ -182,7 +186,7 @@ async function runChunkAndEmbedFromStoredPdf(
     const pending = await listChunksMissingEmbedding(documentId)
     const embeddedBefore = await countEmbeddedChunks(documentId)
     await embedPendingChunks(documentId, doc.tenantId, pending, embeddedBefore, totalChunks)
-    await markCompleted(documentId, pages.length, totalChunks)
+    await markCompleted(documentId, pageCount, totalChunks)
   } catch (error) {
     const detail = describeEmbedApiError(error)
     IndexJobTracker.recordTransientError(documentId, detail.message, detail.httpStatus)
@@ -223,6 +227,7 @@ async function persistChunks(
         pageNo: chunk.pageNo,
         paragraphNo: chunk.paragraphNo,
         chunkText: chunk.text,
+        bboxJson: serializeBbox(chunk.bbox),
       },
     })
     processedChunkCount += 1
@@ -251,7 +256,9 @@ async function embedPendingChunks(
     return
   }
 
-  console.log(`[PdfWorker] embedPendingChunks start documentId=${documentId} pending=${pending.length}`)
+  console.log(
+    `[PdfWorker] embedPendingChunks start documentId=${documentId} pending=${pending.length}`,
+  )
 
   const ownsJob = !IndexJobTracker.isActive(documentId)
   if (ownsJob) {
@@ -311,7 +318,22 @@ const extractTextFromPdfContentStream = (buffer: Buffer) => {
   return parts.join(' ').trim()
 }
 
-const extractPages = async (buffer: Buffer) => {
+async function extractChunks(buffer: Buffer): Promise<{ pageCount: number; chunks: ChunkRow[] }> {
+  try {
+    const paragraphs = await extractPageParagraphsFromPdf(buffer)
+    if (paragraphs.length > 0) {
+      const pageCount = Math.max(...paragraphs.map((p) => p.pageNo))
+      return { pageCount, chunks: chunkParagraphs(paragraphs) }
+    }
+  } catch (error) {
+    console.warn('[PdfWorker] pdf.js layout extraction failed, falling back to pdf-parse:', error)
+  }
+
+  const pages = await extractPagesFallback(buffer)
+  return { pageCount: pages.length, chunks: chunkPagesFallback(pages) }
+}
+
+const extractPagesFallback = async (buffer: Buffer) => {
   try {
     const data = await pdf(buffer)
     if (data.numpages <= 1) return [{ pageNo: 1, text: data.text }]
@@ -324,7 +346,7 @@ const extractPages = async (buffer: Buffer) => {
   }
 }
 
-const chunkPages = (pages: Array<{ pageNo: number; text: string }>) => {
+const chunkPagesFallback = (pages: Array<{ pageNo: number; text: string }>): ChunkRow[] => {
   const chunks: ChunkRow[] = []
   for (const page of pages) {
     if (!page.text.trim()) continue
@@ -336,6 +358,7 @@ const chunkPages = (pages: Array<{ pageNo: number; text: string }>) => {
         pageNo: page.pageNo,
         paragraphNo,
         text: page.text.slice(start, end).trim(),
+        bbox: null,
       })
       paragraphNo++
       start += CHUNK_SIZE - CHUNK_OVERLAP

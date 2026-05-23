@@ -18,14 +18,8 @@ function createTestPdf(): Buffer {
   // Build each object as raw bytes so offset tracking is exact
   const header = Buffer.from('%PDF-1.0\n', 'binary')
 
-  const obj1 = Buffer.from(
-    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-    'binary',
-  )
-  const obj2 = Buffer.from(
-    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
-    'binary',
-  )
+  const obj1 = Buffer.from('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n', 'binary')
+  const obj2 = Buffer.from('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n', 'binary')
   const obj3 = Buffer.from(
     `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n`,
     'binary',
@@ -57,17 +51,12 @@ function createTestPdf(): Buffer {
     offsets
       .slice(1)
       .map((o) => String(o).padStart(10, '0') + ' 00000 n ')
-      .join('\n') + '\n'
+      .join('\n') +
+    '\n'
 
-  const trailer =
-    `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`
+  const trailer = `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`
 
-  return Buffer.concat([
-    header,
-    body,
-    Buffer.from(xref, 'binary'),
-    Buffer.from(trailer, 'binary'),
-  ])
+  return Buffer.concat([header, body, Buffer.from(xref, 'binary'), Buffer.from(trailer, 'binary')])
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -227,6 +216,14 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
       expect(typeof src.paragraphNo).toBe('number')
       expect(typeof src.text).toBe('string')
       expect(typeof src.similarity).toBe('number')
+      if (src.bbox) {
+        expect(typeof src.bbox.x).toBe('number')
+        expect(typeof src.bbox.y).toBe('number')
+        expect(typeof src.bbox.width).toBe('number')
+        expect(typeof src.bbox.height).toBe('number')
+        expect(src.bbox.width).toBeGreaterThan(0)
+        expect(src.bbox.height).toBeGreaterThan(0)
+      }
     }
   })
 
@@ -241,6 +238,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     expect(res.status).toBe(200)
     expect(res.data.answer).toContain('문서에서 확인 불가')
     expect(res.data.sources).toEqual([])
+    expect(res.data.diagnostics?.reason).toBe('NO_RELEVANT_CHUNKS')
   })
 
   // ── Test 8: 관리자 사용량 조회 ───────────────────────────────────────────
@@ -254,12 +252,13 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     expect(Array.isArray(res.data.users)).toBe(true)
     expect(res.data.users.length).toBeGreaterThanOrEqual(1)
 
-    const first = res.data.users[0]
-    expect(first.email).toBeTruthy()
-    expect(typeof first.usedBytes).toBe('number')
-    expect(typeof first.quotaBytes).toBe('number')
-    expect(typeof first.usagePercent).toBe('number')
-    expect(first.lastCollectedAt).toBeTruthy()
+    const userA1 = res.data.users.find((u: { email: string }) => u.email === 'user-a1@example.com')
+    expect(userA1).toBeDefined()
+    expect(typeof userA1.usedBytes).toBe('number')
+    expect(typeof userA1.quotaBytes).toBe('number')
+    expect(typeof userA1.usagePercent).toBe('number')
+    expect(userA1.lastCollectedAt).toBeTruthy()
+    expect(userA1.usedBytes).toBeGreaterThanOrEqual(50 * 1024 * 1024)
     expect(res.data.lastCollectedAt).toBeTruthy()
   })
 

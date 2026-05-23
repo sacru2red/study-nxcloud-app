@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useChat } from '../queries'
 import { SourceCard } from './source-card'
 import type { ChatSource } from './source-card'
+import type { PdfBbox } from '../lib/pdf-bbox'
 import { IndexProgressDisplay, type IndexProgressData } from './index-progress-display'
 
 interface Message {
@@ -27,7 +28,7 @@ export interface ChatPanelProps {
   fileName: string | null
   indexStatus: string | null
   indexProgress?: IndexProgressData | null
-  onPageNavigate?: (pageNo: number) => void
+  onPageNavigate?: (pageNo: number, bbox?: PdfBbox) => void
 }
 
 export function ChatPanel({
@@ -109,10 +110,10 @@ export function ChatPanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-canvas">
-      <div className="border-b border-fog px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">AI Chat</h2>
-        {fileName && <p className="mt-0.5 text-xs text-graphite">{fileName}</p>}
+    <div className="bg-canvas flex min-h-0 flex-1 flex-col">
+      <div className="border-fog border-b px-4 py-3">
+        <h2 className="text-ink text-sm font-semibold">AI Chat</h2>
+        {fileName && <p className="text-graphite mt-0.5 text-xs">{fileName}</p>}
         {indexProgress &&
           (indexStatus === 'PENDING' ||
             indexStatus === 'PROCESSING' ||
@@ -131,7 +132,7 @@ export function ChatPanel({
                 {indexStatus === 'PENDING' || indexStatus === 'PROCESSING' ? (
                   <div className="flex flex-col items-center gap-2">
                     <svg
-                      className="h-6 w-6 animate-spin text-primary-bright"
+                      className="text-primary-bright h-6 w-6 animate-spin"
                       fill="none"
                       viewBox="0 0 24 24"
                     >
@@ -149,18 +150,18 @@ export function ChatPanel({
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                       />
                     </svg>
-                    <p className="text-sm text-graphite">
+                    <p className="text-graphite text-sm">
                       {indexProgress?.message ?? getPlaceholder()}
                     </p>
                   </div>
                 ) : (
-                  <p className="text-sm text-graphite">
+                  <p className="text-graphite text-sm">
                     {indexProgress?.message ?? getPlaceholder()}
                   </p>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-graphite">{getPlaceholder()}</p>
+              <p className="text-graphite text-sm">{getPlaceholder()}</p>
             )}
           </div>
         ) : (
@@ -172,22 +173,22 @@ export function ChatPanel({
                     ref={i === lastUserMessageIndex ? lastUserMessageRef : undefined}
                     className={
                       msg.role === 'user'
-                        ? 'max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-white'
-                        : 'max-w-[80%] rounded-2xl rounded-bl-sm bg-fog px-4 py-2 text-sm text-ink'
+                        ? 'bg-primary max-w-[80%] rounded-2xl rounded-br-sm px-4 py-2 text-sm text-white'
+                        : 'bg-fog text-ink max-w-[80%] rounded-2xl rounded-bl-sm px-4 py-2 text-sm'
                     }
                   >
                     {msg.content}
                   </div>
                 </div>
                 {formatDiagnosticsMessage(msg.diagnosticsReason) && (
-                  <p className="mt-1 text-xs text-accent-sale">
+                  <p className="text-accent-sale mt-1 text-xs">
                     {formatDiagnosticsMessage(msg.diagnosticsReason)}
                   </p>
                 )}
                 {msg.sources && msg.sources.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {msg.sources.map((source, j) => (
-                      <SourceCard key={j} source={source} onPageClick={onPageNavigate} />
+                      <SourceCard key={j} source={source} onSourceClick={onPageNavigate} />
                     ))}
                   </div>
                 )}
@@ -195,7 +196,7 @@ export function ChatPanel({
             ))}
             {chatMutation.isPending && (
               <div className="flex justify-start">
-                <div className="rounded-2xl rounded-bl-sm bg-fog px-4 py-2 text-sm text-graphite">
+                <div className="bg-fog text-graphite rounded-2xl rounded-bl-sm px-4 py-2 text-sm">
                   <span className="flex items-center gap-1">
                     <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle
@@ -222,7 +223,7 @@ export function ChatPanel({
         )}
       </div>
 
-      <div className="border-t border-fog p-4">
+      <div className="border-fog border-t p-4">
         <div className="flex gap-2">
           <input
             type="text"
@@ -236,12 +237,12 @@ export function ChatPanel({
             }}
             placeholder={getPlaceholder()}
             disabled={isDisabled || chatMutation.isPending}
-            className="flex-1 rounded-lg border border-steel px-3 py-2 text-sm outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-cloud disabled:text-graphite"
+            className="border-steel focus:border-primary disabled:bg-cloud disabled:text-graphite flex-1 rounded-lg border px-3 py-2 text-sm outline-none disabled:cursor-not-allowed"
           />
           <button
             onClick={handleSubmit}
             disabled={isDisabled || chatMutation.isPending || !input.trim()}
-            className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary-deep disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-primary hover:bg-primary-deep rounded-lg px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {chatMutation.isPending ? (
               <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">

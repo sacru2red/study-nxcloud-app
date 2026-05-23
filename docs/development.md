@@ -16,10 +16,12 @@
 # PostgreSQL(pgvector) + Nextcloud 실행
 docker compose -f infra/docker-compose.yml up -d
 
-# Nextcloud 초기화 (그룹/사용자/쿼터 설정)
+# Nextcloud 초기화 (그룹/사용자/쿼터 + user-a1 ~52MB quota 샘플)
 chmod +x infra/init-nextcloud.sh
 ./infra/init-nextcloud.sh
 ```
+
+`init-nextcloud.sh`는 `user-a1` 계정 WebDAV에 `quota-sample.bin`(약 52MB)을 업로드합니다. Admin 사용률·E2E(test 8)에서 50MB 이상 사용량을 검증할 때 필요합니다. 이미 파일이 있으면 업로드를 건너뜁니다.
 
 ### 2. 환경 변수 설정
 
@@ -115,11 +117,11 @@ npx nx run frontend-e2e:capture-demo
 node tools/concat-demo-videos.js
 ```
 
-| 단계 | 명령 | 산출물 |
-| ---- | ---- | ------ |
-| 1 | `prepare-e2e:reset` | Docker·DB·Nextcloud 초기화 |
-| 2 | `capture-demo` | `docs/screenshots/*.png`, `test-results/**/video.webm` |
-| 3 | `concat-demo-videos.js` | `docs/demo-capture.webm`, `docs/demo-capture.mp4` |
+| 단계 | 명령                    | 산출물                                                 |
+| ---- | ----------------------- | ------------------------------------------------------ |
+| 1    | `prepare-e2e:reset`     | Docker·DB·Nextcloud 초기화                             |
+| 2    | `capture-demo`          | `docs/screenshots/*.png`, `test-results/**/video.webm` |
+| 3    | `concat-demo-videos.js` | `docs/demo-capture.webm`, `docs/demo-capture.mp4`      |
 
 `tools/concat-demo-videos.js`는 `test-results/`의 시나리오별 WebM을 01→07(05-1·05-2 순)으로 합친 뒤 MP4(H.264)로 변환합니다. WebM만 다시 MP4로 만들 때: `node tools/concat-demo-videos.js --mp4-only`
 
@@ -185,7 +187,11 @@ curl -o /dev/null -s -w "total=%{time_total}s\n" \
   -d '{"question":"하이브리드 자동차가 무엇인가요?"}'
 ```
 
-인덱싱 완료·Gemini/OpenRouter 할당량·문서 크기에 따라 달라질 수 있습니다.
+인덱싱 완료·Gemini/OpenRouter 할당량·문서 크기에 따라 달라질 수 있습니다. CI/자동 테스트로 10초 SLA를 강제하지는 않습니다.
+
+### bbox(근거 하이라이트)
+
+인덱싱 파이프라인이 pdf.js로 청크별 `bbox_json`을 저장합니다. **이미 인덱싱된 문서**는 bbox가 없을 수 있으므로, bbox 하이라이트를 보려면 PDF를 다시 업로드하거나 `POST /api/files/:fileId/retry`로 재인덱싱하세요.
 
 ## 관련 문서
 

@@ -171,7 +171,8 @@ Content-Type: application/json
       "pageNo": 1,
       "paragraphNo": 0,
       "text": "2025년도 상반기 영업 실적 보고서...",
-      "similarity": 0.923
+      "similarity": 0.923,
+      "bbox": { "x": 72, "y": 680, "width": 460, "height": 24 }
     },
     {
       "fileName": "report.pdf",
@@ -184,6 +185,8 @@ Content-Type: application/json
   "sessionId": "880e8400-e29b-41d4-a716-446655440003"
 }
 ```
+
+`bbox`는 PDF user space(원점 좌하) 기준이며, 재인덱싱 전 문서·pdf-parse 폴백 인덱싱에서는 생략될 수 있습니다.
 
 ---
 
@@ -205,7 +208,8 @@ Content-Type: application/json
 {
   "answer": "문서에서 확인 불가",
   "sources": [],
-  "sessionId": "990e8400-e29b-41d4-a716-446655440004"
+  "sessionId": "990e8400-e29b-41d4-a716-446655440004",
+  "diagnostics": { "reason": "NO_RELEVANT_CHUNKS" }
 }
 ```
 
@@ -218,7 +222,7 @@ GET /api/admin/tenants/tenant-a/users-usage
 Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 ```
 
-**Response 200:**
+**Response 200:** (`user-a1` usedBytes는 `init-nextcloud.sh`의 ~52MB 샘플 업로드 후 실측값; 아래는 예시)
 
 ```json
 {

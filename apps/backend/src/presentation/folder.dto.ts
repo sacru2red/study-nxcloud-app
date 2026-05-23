@@ -1,3 +1,5 @@
+import { SourceBboxDto } from './source-bbox.dto'
+
 export namespace FolderDto {
   export interface ChatRequest {
     question: string
@@ -10,6 +12,7 @@ export namespace FolderDto {
     paragraphNo: number
     text: string
     similarity: number
+    bbox?: SourceBboxDto.Bbox
   }
 
   export interface ChatResponse {

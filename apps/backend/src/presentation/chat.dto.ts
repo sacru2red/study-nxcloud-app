@@ -1,4 +1,5 @@
 import { tags } from 'typia'
+import { SourceBboxDto } from './source-bbox.dto'
 
 export namespace ChatDto {
   export interface ChatRequest {
@@ -11,6 +12,7 @@ export namespace ChatDto {
     paragraphNo: number
     text: string
     similarity: number
+    bbox?: SourceBboxDto.Bbox
   }
 
   export interface ChatResponse {

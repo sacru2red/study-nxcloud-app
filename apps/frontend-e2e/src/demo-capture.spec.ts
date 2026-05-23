@@ -67,11 +67,14 @@ async function waitForUploadedDocumentByListApi(
 ): Promise<string> {
   const maxAttempts = 60
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const filesResponse = await page.request.get(`${BACKEND_API_BASE_URL}/tenants/${tenantId}/files`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+    const filesResponse = await page.request.get(
+      `${BACKEND_API_BASE_URL}/tenants/${tenantId}/files`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    })
+    )
     if (!filesResponse.ok()) {
       throw new Error(`Failed to list files for upload fallback: ${filesResponse.status()}`)
     }
@@ -134,11 +137,14 @@ async function waitForIndexCompleted(
   const accessToken = await getAccessTokenFromLocalStorage(page)
   const maxAttempts = 150
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const response = await page.request.get(`${BACKEND_API_BASE_URL}/files/${documentId}/index-status`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+    const response = await page.request.get(
+      `${BACKEND_API_BASE_URL}/files/${documentId}/index-status`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    })
+    )
     if (response.ok()) {
       const indexStatus = (await response.json()) as { status?: string }
       if (indexStatus.status === 'COMPLETED') {
@@ -210,9 +216,7 @@ async function askChatExpectingSources(
 
     const chatResponsePromise = page.waitForResponse(
       (response) =>
-        response.request().method() === 'POST' &&
-        response.url().includes('/chat') &&
-        response.ok(),
+        response.request().method() === 'POST' && response.url().includes('/chat') && response.ok(),
       { timeout: 90_000 },
     )
     await askChat(page, question)
@@ -317,7 +321,7 @@ test('Screenshot 05 - 1 - Chat Question', async ({ page }) => {
   await scrollChatQuestionIntoView(page, RAG_QUESTION)
   await screenshot(page, '05-1-chat-with-sources.png')
 
-  await page.locator('.rounded-lg.border.border-gray-200.bg-gray-50').first().click()
+  await page.locator('.rounded-lg.border.border-fog.bg-cloud').first().click()
   await page.locator('span:has-text("Page")').last().waitFor({ state: 'visible', timeout: 10_000 })
   await scrollChatQuestionIntoView(page, RAG_QUESTION)
   await page.waitForTimeout(600)

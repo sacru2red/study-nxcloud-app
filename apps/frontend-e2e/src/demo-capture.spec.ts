@@ -222,7 +222,7 @@ async function askChatExpectingSources(
       await expect(page.getByRole('heading', { name: 'Document AI Chat' })).toBeVisible({
         timeout: 30_000,
       })
-      await selectDemoFile(page, fileName, documentId)
+      await selectDemoFileAndWaitForPdf(page, fileName, documentId)
     }
 
     const chatResponse = await submitChatQuestion(page, question)
@@ -254,17 +254,19 @@ async function goToMainPageAsAdmin(page: Page): Promise<void> {
 }
 
 async function waitForPdfReady(page: Page): Promise<void> {
+  const viewer = page.getByTestId('pdf-viewer')
+  await expect(viewer).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('pdf-loading')).toHaveCount(0, { timeout: 60_000 })
   await page.waitForFunction(
     () => {
-      const viewer = document.querySelector('[data-testid="pdf-viewer"]')
-      if (!(viewer instanceof HTMLElement)) {
+      const root = document.querySelector('[data-testid="pdf-viewer"]')
+      if (!(root instanceof HTMLElement)) {
         return false
       }
-      if (viewer.getAttribute('data-pdf-page-ready') !== 'true') {
+      if (root.getAttribute('data-pdf-page-ready') !== 'true') {
         return false
       }
-      const canvas = viewer.querySelector('.react-pdf__Page__canvas')
+      const canvas = root.querySelector('.react-pdf__Page__canvas')
       if (!(canvas instanceof HTMLCanvasElement)) {
         return false
       }
@@ -273,6 +275,37 @@ async function waitForPdfReady(page: Page): Promise<void> {
     },
     { timeout: 60_000 },
   )
+  await expect(viewer.locator('.react-pdf__Page__canvas')).toBeVisible({ timeout: 10_000 })
+  await expect(viewer.getByText(/Page \d+ \/ \d+/)).toBeVisible({ timeout: 10_000 })
+}
+
+async function waitForPdfContentResponse(page: Page): Promise<void> {
+  await page
+    .waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes('/content') &&
+        response.ok(),
+      { timeout: 60_000 },
+    )
+    .catch(() => undefined)
+}
+
+async function selectDemoFileAndWaitForPdf(
+  page: Page,
+  fileName: string,
+  documentId?: string | null,
+): Promise<void> {
+  const contentReady = waitForPdfContentResponse(page)
+  await selectDemoFile(page, fileName, documentId)
+  await contentReady
+  await waitForPdfReady(page)
+}
+
+async function screenshotWithPdf(page: Page, name: string): Promise<void> {
+  await waitForPdfReady(page)
+  await page.waitForTimeout(400)
+  await screenshot(page, name)
 }
 
 async function selectDemoFile(
@@ -331,16 +364,10 @@ test('Screenshot 04 - Main Layout with PDF', async ({ page }) => {
   if (!uploadedDocumentId) {
     throw new Error('uploadedDocumentId is not set from upload step')
   }
-  const pdfContentPromise = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'GET' && response.url().includes('/content') && response.ok(),
-    { timeout: 60_000 },
-  )
+  const pdfContentPromise = waitForPdfContentResponse(page)
   await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
   await pdfContentPromise
-  await waitForPdfReady(page)
-  await page.waitForTimeout(2000)
-  await screenshot(page, '04-main-layout.png')
+  await screenshotWithPdf(page, '04-main-layout.png')
 })
 
 test('Screenshot 05 - 1 - Chat Question', async ({ page }) => {
@@ -348,16 +375,17 @@ test('Screenshot 05 - 1 - Chat Question', async ({ page }) => {
   if (!uploadedDocumentId) {
     throw new Error('uploadedDocumentId is not set from upload step')
   }
-  await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
+  await selectDemoFileAndWaitForPdf(page, DEMO_PDF_NAME, uploadedDocumentId)
   await askChatExpectingSources(page, RAG_QUESTION, uploadedDocumentId, DEMO_PDF_NAME)
   await scrollChatQuestionIntoView(page, RAG_QUESTION)
-  await screenshot(page, '05-1-chat-with-sources.png')
+  await screenshotWithPdf(page, '05-1-chat-with-sources.png')
 
   await page.getByTestId('chat-source-card').first().click()
+  await waitForPdfReady(page)
   await page.locator('span:has-text("Page")').last().waitFor({ state: 'visible', timeout: 10_000 })
   await scrollChatQuestionIntoView(page, RAG_QUESTION)
   await page.waitForTimeout(600)
-  await screenshot(page, '05-1-1-source-page-nav.png')
+  await screenshotWithPdf(page, '05-1-1-source-page-nav.png')
 })
 
 test('Screenshot 05 - 2 - Chat Question', async ({ page }) => {
@@ -365,11 +393,11 @@ test('Screenshot 05 - 2 - Chat Question', async ({ page }) => {
   if (!uploadedDocumentId) {
     throw new Error('uploadedDocumentId is not set from upload step')
   }
-  await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
+  await selectDemoFileAndWaitForPdf(page, DEMO_PDF_NAME, uploadedDocumentId)
   const overviewQuestion = '개요페이지는 몇 페이지야'
   await askChat(page, overviewQuestion)
   await scrollChatQuestionIntoView(page, overviewQuestion)
-  await screenshot(page, '05-2-chat-with-sources.png')
+  await screenshotWithPdf(page, '05-2-chat-with-sources.png')
 })
 
 test('Screenshot 06 - Chat No Source', async ({ page }) => {
@@ -377,10 +405,10 @@ test('Screenshot 06 - Chat No Source', async ({ page }) => {
   if (!uploadedDocumentId) {
     throw new Error('uploadedDocumentId is not set from upload step')
   }
-  await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
+  await selectDemoFileAndWaitForPdf(page, DEMO_PDF_NAME, uploadedDocumentId)
   await askChat(page, NO_SOURCE_QUESTION)
   await expect(page.getByText(/문서에서 확인 불가/).first()).toBeVisible({ timeout: 60_000 })
-  await screenshot(page, '06-chat-no-source.png')
+  await screenshotWithPdf(page, '06-chat-no-source.png')
 })
 
 test('Screenshot 07 - Admin Usage', async ({ page }) => {

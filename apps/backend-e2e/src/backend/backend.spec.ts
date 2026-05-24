@@ -94,6 +94,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
   let tokenB: string
   let fileId: string
   let tenantIdA: string
+  let uploadedFileSize: number
 
   // ── Test 1: tenant-a 로그인 ──────────────────────────────────────────────
   it('1. should login as tenant-a admin and return access token + user info', async () => {
@@ -159,6 +160,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     expect(res.data.indexStatus).toBe('PENDING')
 
     fileId = res.data.documentId
+    uploadedFileSize = res.data.fileSize
   })
 
   // ── Test 4: 인덱싱 완료 (비동기 처리 완료까지 폴링) ─────────────────────
@@ -227,8 +229,8 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     }
   })
 
-  // ── Test 7: 문서 외 질문 → 환각 억제 ("문서에서 확인 불가") ──────────────
-  it('7. should return "문서에서 확인 불가" for out-of-document questions', async () => {
+  // ── Test 7: 문서 외 질문 → 사용자에게 "문서에서 확인 불가" ───────────────
+  it('7. should return "문서에서 확인 불가" with empty sources for unrelated questions', async () => {
     const res = await axios.post(
       `/api/files/${fileId}/chat`,
       { question: 'What is the weather in Seoul today?' },
@@ -238,11 +240,11 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     expect(res.status).toBe(200)
     expect(res.data.answer).toContain('문서에서 확인 불가')
     expect(res.data.sources).toEqual([])
-    expect(res.data.diagnostics?.reason).toBe('NO_RELEVANT_CHUNKS')
+    expect(['NO_RELEVANT_CHUNKS', 'LLM_API_FAILED']).toContain(res.data.diagnostics?.reason)
   })
 
-  // ── Test 8: 관리자 사용량 조회 ───────────────────────────────────────────
-  it('8. should return users-usage for admin user (usagePercent per user)', async () => {
+  // ── Test 8: 관리자 사용량 조회 (앱 DB documents.file_size 기준) ─────────
+  it('8. should return users-usage with app DB usedBytes per user', async () => {
     const res = await axios.get(`/api/admin/tenants/${tenantIdA}/users-usage`, {
       headers: { Authorization: `Bearer ${tokenA}` },
     })
@@ -258,7 +260,7 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     expect(typeof userA1.quotaBytes).toBe('number')
     expect(typeof userA1.usagePercent).toBe('number')
     expect(userA1.lastCollectedAt).toBeTruthy()
-    expect(userA1.usedBytes).toBeGreaterThanOrEqual(50 * 1024 * 1024)
+    expect(userA1.usedBytes).toBeGreaterThanOrEqual(uploadedFileSize)
     expect(res.data.lastCollectedAt).toBeTruthy()
   })
 

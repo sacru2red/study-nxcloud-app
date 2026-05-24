@@ -78,6 +78,24 @@ export function PdfViewer({
     setRenderedPage(page)
   }, [])
 
+  const handleLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
+    setTotalPages(numPages)
+    setCurrentPage((previousPage) => Math.min(previousPage, numPages))
+    setLoadError(null)
+  }, [])
+
+  const handleLoadError = useCallback((error: Error) => {
+    setLoadError(error.message || 'Unknown PDF loading error')
+  }, [])
+
+  const fileSource = useMemo(() => {
+    const accessToken = getAccessToken()
+    return {
+      url: getConnection().host + api.functional.files.content.path(fileId ?? ''),
+      httpHeaders: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    }
+  }, [fileId])
+
   useEffect(() => {
     if (!targetPage || targetPage < 1) {
       return
@@ -104,7 +122,7 @@ export function PdfViewer({
   useEffect(() => {
     setRenderedPage(null)
     clearPageReadyMarker()
-  }, [currentPage, fileId, clearPageReadyMarker])
+  }, [currentPage, clearPageReadyMarker])
 
   const highlightOverlay = useMemo(() => {
     if (!highlightBbox || !renderedPage) {
@@ -153,25 +171,9 @@ export function PdfViewer({
     )
   }
 
-  const handleLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setTotalPages(numPages)
-    setCurrentPage((previousPage) => Math.min(previousPage, numPages))
-    setLoadError(null)
-  }
-
-  const handleLoadError = (error: Error) => {
-    setLoadError(error.message || 'Unknown PDF loading error')
-  }
-
   const goToPage = (nextPage: number) => {
     onManualPageChange?.()
     setCurrentPage(nextPage)
-  }
-
-  const accessToken = getAccessToken()
-  const fileSource = {
-    url: getConnection().host + api.functional.files.content.path(fileId),
-    httpHeaders: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
   }
 
   return (

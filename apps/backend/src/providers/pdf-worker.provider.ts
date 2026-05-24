@@ -318,6 +318,8 @@ const extractTextFromPdfContentStream = (buffer: Buffer) => {
   return parts.join(' ').trim()
 }
 
+let pdfJsLayoutFallbackWarned = false
+
 async function extractChunks(buffer: Buffer): Promise<{ pageCount: number; chunks: ChunkRow[] }> {
   try {
     const paragraphs = await extractPageParagraphsFromPdf(buffer)
@@ -326,7 +328,13 @@ async function extractChunks(buffer: Buffer): Promise<{ pageCount: number; chunk
       return { pageCount, chunks: chunkParagraphs(paragraphs) }
     }
   } catch (error) {
-    console.warn('[PdfWorker] pdf.js layout extraction failed, falling back to pdf-parse:', error)
+    if (!pdfJsLayoutFallbackWarned) {
+      pdfJsLayoutFallbackWarned = true
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(
+        `[PdfWorker] pdf.js layout extraction unavailable on this platform; using pdf-parse fallback (${message})`,
+      )
+    }
   }
 
   const pages = await extractPagesFallback(buffer)

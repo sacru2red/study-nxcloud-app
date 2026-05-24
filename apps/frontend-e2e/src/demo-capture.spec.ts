@@ -9,10 +9,12 @@ const DEMO_PDF_NAME = '202212301672357894280.pdf'
 const DEMO_PDF_PATH = join(workspaceRoot, '.tmp', 'demo-pdfs', DEMO_PDF_NAME)
 const RAG_QUESTION = '하이브리드 자동차가 무엇인가요?'
 const NO_SOURCE_QUESTION = '오늘 서울 날씨는 어떤가요?'
+const DEMO_FOLDER_NAME = '데모-폴더'
 const BACKEND_API_BASE_URL = process.env['BACKEND_API_BASE_URL'] || 'http://localhost:3000/api'
 
 test.describe.configure({ mode: 'serial', timeout: 900_000 })
 let uploadedDocumentId: string | null = null
+let folderDocumentId: string | null = null
 
 async function screenshot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: join(SCREENSHOTS_DIR, name), fullPage: false })
@@ -92,7 +94,15 @@ async function waitForUploadedDocumentByListApi(
   throw new Error(`Uploaded file "${fileName}" not found in files list`)
 }
 
-async function uploadPdf(page: Page, filePath: string, fileName: string): Promise<string> {
+async function uploadPdf(
+  page: Page,
+  filePath: string,
+  fileName: string,
+  folderName?: string,
+): Promise<string> {
+  if (folderName) {
+    await page.getByPlaceholder('예: 2024-계약').fill(folderName)
+  }
   const uploadResponsePromise = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
@@ -411,15 +421,33 @@ test('Screenshot 06 - Chat No Source', async ({ page }) => {
   await screenshotWithPdf(page, '06-chat-no-source.png')
 })
 
-test('Screenshot 07 - Admin Usage', async ({ page }) => {
+test('Screenshot 07 - Folder Chat', async ({ page }) => {
   await goToMainPageAsAdmin(page)
-  await page.evaluate(() => {
-    window.history.pushState({}, '', '/admin')
-    window.dispatchEvent(new PopStateEvent('popstate'))
+  folderDocumentId = await uploadPdf(page, DEMO_PDF_PATH, DEMO_PDF_NAME, DEMO_FOLDER_NAME)
+  await waitForIndexCompleted(page, DEMO_PDF_NAME, folderDocumentId)
+  await page.getByRole('button', { name: DEMO_FOLDER_NAME }).click()
+  await page.getByRole('button', { name: '폴더 채팅' }).click()
+  await expect(page.getByRole('heading', { name: 'Folder AI Chat' })).toBeVisible({
+    timeout: 15_000,
   })
+  const chatInput = page.getByPlaceholder('Ask about documents in this folder...')
+  await expect(chatInput).toBeEnabled({ timeout: 30_000 })
+  await chatInput.fill(RAG_QUESTION)
+  await page.getByRole('button', { name: 'Send' }).click()
+  await expect(page.getByText('Thinking...')).not.toBeVisible({ timeout: 60_000 })
+  await expect(page.getByTestId('folder-chat-assistant-message').last()).toBeVisible({
+    timeout: 30_000,
+  })
+  await page.waitForTimeout(400)
+  await screenshot(page, '07-folder-chat.png')
+})
+
+test('Screenshot 08 - Admin Usage', async ({ page }) => {
+  await goToMainPageAsAdmin(page)
+  await page.getByTestId('admin-nav-link').click()
   await expect(page.getByRole('heading', { name: 'Admin Dashboard' })).toBeVisible({
     timeout: 15_000,
   })
   await expect(page.getByRole('table')).toBeVisible({ timeout: 10_000 })
-  await screenshot(page, '07-admin-usage.png')
+  await screenshot(page, '08-admin-usage.png')
 })

@@ -33,6 +33,9 @@ function isFallbackConfigured(): boolean {
   return Boolean(process.env.OPENROUTER_API_KEY?.trim())
 }
 
+const WARN_THROTTLE_EVERY = 25
+const warnThrottleCounts = new Map<string, number>()
+
 function logEmbedEvent(
   level: 'warn' | 'error' | 'log',
   event: string,
@@ -50,6 +53,24 @@ function logEmbedEvent(
   console.log(line)
 }
 
+function logEmbedWarnThrottled(
+  throttleKey: string,
+  event: string,
+  fields: Record<string, unknown>,
+): void {
+  const count = (warnThrottleCounts.get(throttleKey) ?? 0) + 1
+  warnThrottleCounts.set(throttleKey, count)
+
+  if (count !== 1 && count % WARN_THROTTLE_EVERY !== 0) {
+    return
+  }
+
+  logEmbedEvent('warn', event, {
+    ...fields,
+    ...(count > 1 ? { repeatCount: count } : {}),
+  })
+}
+
 function reportEmbedApiError(
   scope: string,
   error: unknown,
@@ -58,7 +79,8 @@ function reportEmbedApiError(
   const detail = describeEmbedApiError(error)
   const retryAfterMs = context.retryAfterMs ?? detail.retryAfterMs
 
-  logEmbedEvent('warn', `${scope} — retry`, {
+  const throttleKey = `${scope}:${detail.httpStatus ?? 'unknown'}:${context.documentId ?? 'global'}`
+  logEmbedWarnThrottled(throttleKey, `${scope} — retry`, {
     documentId: context.documentId,
     chunkId: context.chunkId,
     attempt: context.attempt,
@@ -130,11 +152,6 @@ async function generateGeminiEmbedding(text: string, context: EmbedLogContext): 
       const status = axios.isAxiosError(error) ? error.response?.status : undefined
 
       if (status === 429 && isFallbackConfigured()) {
-        reportEmbedApiError('Gemini 429 → OpenRouter fallback', error, {
-          ...context,
-          attempt: attempt + 1,
-          maxAttempts: MAX_EMBEDDING_RETRIES,
-        })
         throw error
       }
 
@@ -163,7 +180,10 @@ async function generateGeminiEmbedding(text: string, context: EmbedLogContext): 
   throw lastError
 }
 
-async function generateFallbackEmbedding(text: string, context: EmbedLogContext): Promise<number[]> {
+async function generateFallbackEmbedding(
+  text: string,
+  context: EmbedLogContext,
+): Promise<number[]> {
   const apiKey = process.env.OPENROUTER_API_KEY?.trim()
   if (!apiKey) {
     throw new Error('OPENROUTER_API_KEY is not configured')
@@ -237,11 +257,15 @@ export namespace EmbeddingProvider {
       }
 
       const detail = describeEmbedApiError(primaryError)
-      logEmbedEvent('warn', 'Primary failed — OpenRouter fallback', {
-        ...context,
-        httpStatus: detail.httpStatus,
-        message: detail.message,
-      })
+      logEmbedWarnThrottled(
+        `primary-fallback:${detail.httpStatus ?? 'unknown'}:${context.documentId ?? 'global'}`,
+        'Primary failed — OpenRouter fallback',
+        {
+          ...context,
+          httpStatus: detail.httpStatus,
+          message: detail.message,
+        },
+      )
 
       return await generateFallbackEmbedding(text, context)
     }

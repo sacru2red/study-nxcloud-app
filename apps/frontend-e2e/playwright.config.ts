@@ -17,6 +17,8 @@ export default defineConfig({
   globalSetup: require.resolve('./src/global-setup.ts'),
   outputDir: join(workspaceRoot, 'test-results'),
   timeout: 60_000,
+  // 동일 PDF를 같은 tenant에 병렬 업로드하면 Nextcloud WebDAV 423 Locked가 난다.
+  workers: process.env['E2E_WORKERS'] ? Number(process.env['E2E_WORKERS']) : 1,
   expect: {
     timeout: 10_000,
   },

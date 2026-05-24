@@ -1,4 +1,4 @@
-import { createRouter, createRootRoute, createRoute, Outlet } from '@tanstack/react-router'
+import { createRouter, createRootRoute, createRoute, Outlet, Link } from '@tanstack/react-router'
 import { useAtom } from 'jotai'
 import { userAtom, logoutAtom } from './stores/auth'
 import { useQuota } from './queries'
@@ -16,13 +16,22 @@ function AppHeader() {
   return (
     <header className="flex items-center justify-between border-b px-6 py-3">
       <h1 className="text-lg font-bold">Document AI Chat</h1>
-      <div className="flex items-center gap-4 text-sm text-charcoal">
+      <div className="text-charcoal flex items-center gap-4 text-sm">
         {quota && <StorageIndicator usedBytes={quota.usedBytes} quotaBytes={quota.quotaBytes} />}
+        {user.role === 'admin' && (
+          <Link
+            to="/admin"
+            data-testid="admin-nav-link"
+            className="text-primary-deep hover:text-primary text-xs font-medium"
+          >
+            Admin
+          </Link>
+        )}
         <span>{user.email}</span>
-        <span className="rounded bg-fog px-2 py-0.5 text-xs">{user.role}</span>
+        <span className="bg-fog rounded px-2 py-0.5 text-xs">{user.role}</span>
         <button
           onClick={doLogout}
-          className="rounded bg-primary-soft px-3 py-1 text-xs text-error hover:bg-primary-ghost"
+          className="bg-primary-soft text-error hover:bg-primary-ghost rounded px-3 py-1 text-xs"
         >
           logout
         </button>
@@ -33,7 +42,7 @@ function AppHeader() {
 
 const rootRoute = createRootRoute({
   component: () => (
-    <div className="flex min-h-screen flex-col max-h-screen overflow-auto">
+    <div className="flex max-h-screen min-h-screen flex-col overflow-auto">
       <AppHeader />
       <Outlet />
     </div>

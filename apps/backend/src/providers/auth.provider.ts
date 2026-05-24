@@ -1,4 +1,5 @@
 import * as bcrypt from 'bcrypt'
+import { UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { prisma } from '../prisma'
 import { IJwtPayload } from '../common/types'
@@ -11,10 +12,10 @@ export namespace AuthProvider {
       include: { tenant: true },
     })
 
-    if (!user) throw new Error('Invalid credentials')
+    if (!user) throw new UnauthorizedException('Invalid credentials')
 
     const valid = await bcrypt.compare(password, user.passwordHash)
-    if (!valid) throw new Error('Invalid credentials')
+    if (!valid) throw new UnauthorizedException('Invalid credentials')
 
     return { user }
   }

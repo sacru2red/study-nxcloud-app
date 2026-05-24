@@ -2,14 +2,12 @@ import { test, expect } from '@playwright/test'
 import { ADMIN_USER, REGULAR_USER, loginAs } from './support/auth'
 
 test.describe('관리자', () => {
-  test('admin 역할은 관리자 대시보드에 접근할 수 있다', async ({ page }) => {
+  test('admin 역할은 헤더 Admin 링크로 대시보드에 접근할 수 있다', async ({ page }) => {
     await loginAs(page, ADMIN_USER)
 
-    await page.evaluate(() => {
-      window.history.pushState({}, '', '/admin')
-      window.dispatchEvent(new PopStateEvent('popstate'))
-    })
+    await page.getByTestId('admin-nav-link').click()
 
+    await expect(page).toHaveURL(/\/admin$/)
     await expect(page.getByRole('heading', { name: 'Admin Dashboard' })).toBeVisible()
     await expect(page.getByText(ADMIN_USER.email, { exact: true })).toBeVisible()
   })

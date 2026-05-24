@@ -1,4 +1,5 @@
 import { SourceBboxDto } from './source-bbox.dto'
+import type { ChatDto } from './chat.dto'
 
 export namespace FolderDto {
   export interface ChatRequest {
@@ -20,5 +21,6 @@ export namespace FolderDto {
     sources: ChatSource[]
     sessionId: string | null
     documentCount: number
+    diagnostics?: ChatDto.ChatDiagnostics
   }
 }

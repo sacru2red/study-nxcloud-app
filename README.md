@@ -48,7 +48,8 @@ npx nx run-many -t serve -p backend frontend
 | 5-1-1 | 근거 카드 → PDF 페이지 이동 | ![Source page navigation](docs/screenshots/05-1-1-source-page-nav.png) |
 | 5-2   | AI 채팅 (추가 질문)         | ![Chat follow-up](docs/screenshots/05-2-chat-with-sources.png)         |
 | 6     | 문서에 없는 질문            | ![Chat no source](docs/screenshots/06-chat-no-source.png)              |
-| 7     | 관리자 대시보드             | ![Admin usage](docs/screenshots/07-admin-usage.png)                    |
+| 7     | 폴더 AI 채팅                | ![Folder chat](docs/screenshots/07-folder-chat.png)                    |
+| 8     | 관리자 대시보드             | ![Admin usage](docs/screenshots/08-admin-usage.png)                    |
 
 ### Video
 

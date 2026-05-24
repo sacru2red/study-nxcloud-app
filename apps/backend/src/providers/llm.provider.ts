@@ -8,8 +8,37 @@ const SYSTEM_PROMPT = `당신은 문서 분석 어시스턴트입니다.
 
 interface LlmApiErrorPayload {
   error?: {
-    code?: string
+    code?: string | number
     message?: string
+  }
+  message?: string
+  path?: string
+  status?: number
+}
+
+const DEFAULT_LLM_ENDPOINT = 'https://opencode.ai/zen/v1/chat/completions'
+const CHAT_COMPLETIONS_SUFFIX = '/chat/completions'
+const MAX_LOG_BODY_LENGTH = 500
+
+const resolveLlmEndpoint = (baseUrl?: string): string => {
+  const raw = (baseUrl ?? DEFAULT_LLM_ENDPOINT).trim().replace(/\/+$/, '')
+  if (raw.endsWith(CHAT_COMPLETIONS_SUFFIX)) {
+    return raw
+  }
+  return `${raw}${CHAT_COMPLETIONS_SUFFIX}`
+}
+
+const summarizeResponseBody = (data: unknown): string => {
+  if (data == null) {
+    return '(empty body)'
+  }
+  try {
+    const serialized = typeof data === 'string' ? data : JSON.stringify(data)
+    return serialized.length <= MAX_LOG_BODY_LENGTH
+      ? serialized
+      : `${serialized.slice(0, MAX_LOG_BODY_LENGTH)}…`
+  } catch {
+    return '(unserializable body)'
   }
 }
 
@@ -48,11 +77,16 @@ const buildLlmError = (error: unknown): LlmChatError => {
       typeof retryAfterHeader === 'string' ? Number.parseInt(retryAfterHeader, 10) : null
     const responseData = error.response?.data as LlmApiErrorPayload | undefined
     const providerCode = responseData?.error?.code
-    const providerMessage = responseData?.error?.message
+    const providerMessage =
+      responseData?.error?.message ??
+      responseData?.message ??
+      (responseData?.path
+        ? `HTTP ${statusCode ?? 'unknown'} on path ${responseData.path}`
+        : undefined)
 
     return new LlmChatError({
       statusCode,
-      code: providerCode != null ? String(providerCode) : error.code ?? null,
+      code: providerCode != null ? String(providerCode) : (error.code ?? null),
       message: providerMessage ?? error.message ?? 'LLM API request failed',
       retryAfterSeconds: Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : null,
     })
@@ -70,6 +104,17 @@ export namespace LlmProvider {
   export const chat = async (question: string, context: string) => {
     const apiKey = process.env.LLM_API_KEY
     const model = process.env.LLM_MODEL || 'minimax-m2.5-free'
+    const endpoint = resolveLlmEndpoint(process.env.LLM_BASE_URL)
+
+    if (!apiKey) {
+      console.error('[LlmProvider] LLM_API_KEY is not set')
+      throw new LlmChatError({
+        statusCode: null,
+        code: 'MISSING_API_KEY',
+        message: 'LLM_API_KEY is not configured',
+        retryAfterSeconds: null,
+      })
+    }
 
     const userMessage = context
       ? `다음 문서 내용을 바탕으로 질문에 답변하세요.\n\n[문서 내용]\n${context}\n\n[질문]\n${question}`
@@ -86,11 +131,11 @@ export namespace LlmProvider {
         }
 
         console.log(
-          `[LlmProvider] Calling LLM (attempt ${attempt + 1}/${MAX_RETRIES + 1}) model=${model}`,
+          `[LlmProvider] POST ${endpoint} attempt=${attempt + 1}/${MAX_RETRIES + 1} model=${model} contextChars=${context.length} questionChars=${question.length}`,
         )
 
         const response = await axios.post(
-          process.env.LLM_BASE_URL || 'https://opencode.ai/zen/v1/chat/completions',
+          endpoint,
           {
             model,
             messages: [
@@ -111,7 +156,10 @@ export namespace LlmProvider {
 
         const content = response.data?.choices?.[0]?.message?.content
         if (typeof content !== 'string') {
-          console.error('[LlmProvider] Unexpected response shape:', JSON.stringify(response.data)?.slice(0, 500))
+          console.error(
+            '[LlmProvider] Unexpected response shape:',
+            JSON.stringify(response.data)?.slice(0, 500),
+          )
           throw new LlmChatError({
             statusCode: response.status ?? null,
             code: null,
@@ -126,14 +174,17 @@ export namespace LlmProvider {
         const llmError = buildLlmError(error)
         const isRetryable =
           llmError.statusCode !== null && RETRYABLE_STATUS_CODES.includes(llmError.statusCode)
+        const responseBody = axios.isAxiosError(error)
+          ? summarizeResponseBody(error.response?.data)
+          : undefined
 
         console.warn(
-          `[LlmProvider] Attempt ${attempt + 1} failed: status=${llmError.statusCode} code=${llmError.code} retryable=${isRetryable}`,
+          `[LlmProvider] Attempt ${attempt + 1} failed: endpoint=${endpoint} status=${llmError.statusCode} code=${llmError.code} retryable=${isRetryable} message=${llmError.message}${responseBody ? ` body=${responseBody}` : ''}`,
         )
 
         if (!isRetryable || attempt === MAX_RETRIES) {
           console.error(
-            `[LlmProvider] Giving up after ${attempt + 1} attempt(s), last error: ${llmError.message}`,
+            `[LlmProvider] Giving up after ${attempt + 1} attempt(s): endpoint=${endpoint} model=${model} status=${llmError.statusCode} message=${llmError.message}`,
           )
           throw llmError
         }

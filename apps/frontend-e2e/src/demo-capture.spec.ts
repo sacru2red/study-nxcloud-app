@@ -20,10 +20,7 @@ async function screenshot(page: Page, name: string): Promise<void> {
 
 /** 답변·출처 카드로 스크롤이 밀린 뒤에도 데모 스샷에 질문이 보이도록 한다. */
 async function scrollChatQuestionIntoView(page: Page, question: string): Promise<void> {
-  const userBubble = page
-    .locator('.rounded-2xl.rounded-br-sm.bg-blue-500')
-    .filter({ hasText: question })
-    .last()
+  const userBubble = page.getByTestId('chat-user-message').filter({ hasText: question }).last()
   await expect(userBubble).toBeVisible({ timeout: 10_000 })
   await userBubble.evaluate((element) => {
     element.scrollIntoView({ block: 'start', inline: 'nearest' })
@@ -177,16 +174,30 @@ async function waitForIndexCompleted(
   )
 }
 
-async function askChat(page: Page, question: string): Promise<void> {
-  await expect(page.getByPlaceholder('Ask a question about this document...')).toBeEnabled({
-    timeout: 30_000,
-  })
-  await page.getByPlaceholder('Ask a question about this document...').fill(question)
+async function submitChatQuestion(page: Page, question: string) {
+  const chatInput = page.getByPlaceholder('Ask a question about this document...')
+  await expect(chatInput).toBeEnabled({ timeout: 30_000 })
+
+  const chatResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && response.url().includes('/chat') && response.ok(),
+    { timeout: 90_000 },
+  )
+
+  await chatInput.fill(question)
   await page.getByRole('button', { name: 'Send' }).click()
   await expect(page.getByText('Thinking...')).not.toBeVisible({ timeout: 60_000 })
-  await expect(page.locator('.rounded-2xl.rounded-bl-sm.bg-gray-100').last()).toBeVisible({
-    timeout: 60_000,
+
+  const chatResponse = await chatResponsePromise
+  await expect(page.getByTestId('chat-assistant-message').last()).toBeVisible({
+    timeout: 10_000,
   })
+
+  return chatResponse
+}
+
+async function askChat(page: Page, question: string): Promise<void> {
+  await submitChatQuestion(page, question)
 }
 
 interface ChatApiResponse {
@@ -194,7 +205,7 @@ interface ChatApiResponse {
   sources?: Array<{ pageNo: number; paragraphNo: number }>
   diagnostics?: {
     reason?: string
-    llmError?: { retryAfterSeconds?: number | null }
+    llmError?: { message?: string; retryAfterSeconds?: number | null }
   }
 }
 
@@ -214,13 +225,7 @@ async function askChatExpectingSources(
       await selectDemoFile(page, fileName, documentId)
     }
 
-    const chatResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' && response.url().includes('/chat') && response.ok(),
-      { timeout: 90_000 },
-    )
-    await askChat(page, question)
-    const chatResponse = await chatResponsePromise
+    const chatResponse = await submitChatQuestion(page, question)
     const chatBody = (await chatResponse.json()) as ChatApiResponse
 
     if (chatBody.sources && chatBody.sources.length > 0) {
@@ -239,13 +244,35 @@ async function askChatExpectingSources(
     }
 
     throw new Error(
-      `Chat did not return sources for document ${documentId} (reason=${reason}, answer=${chatBody.answer ?? 'n/a'})`,
+      `Chat did not return sources for document ${documentId} (reason=${reason}, answer=${chatBody.answer ?? 'n/a'}, llmError=${chatBody.diagnostics?.llmError?.message ?? 'n/a'})`,
     )
   }
 }
 
 async function goToMainPageAsAdmin(page: Page): Promise<void> {
   await loginAs(page, ADMIN_USER)
+}
+
+async function waitForPdfReady(page: Page): Promise<void> {
+  await expect(page.getByTestId('pdf-loading')).toHaveCount(0, { timeout: 60_000 })
+  await page.waitForFunction(
+    () => {
+      const viewer = document.querySelector('[data-testid="pdf-viewer"]')
+      if (!(viewer instanceof HTMLElement)) {
+        return false
+      }
+      if (viewer.getAttribute('data-pdf-page-ready') !== 'true') {
+        return false
+      }
+      const canvas = viewer.querySelector('.react-pdf__Page__canvas')
+      if (!(canvas instanceof HTMLCanvasElement)) {
+        return false
+      }
+      const style = window.getComputedStyle(canvas)
+      return canvas.width > 0 && style.visibility !== 'hidden'
+    },
+    { timeout: 60_000 },
+  )
 }
 
 async function selectDemoFile(
@@ -304,9 +331,14 @@ test('Screenshot 04 - Main Layout with PDF', async ({ page }) => {
   if (!uploadedDocumentId) {
     throw new Error('uploadedDocumentId is not set from upload step')
   }
+  const pdfContentPromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' && response.url().includes('/content') && response.ok(),
+    { timeout: 60_000 },
+  )
   await selectDemoFile(page, DEMO_PDF_NAME, uploadedDocumentId)
-  await expect(page.locator('.react-pdf__Page__canvas').first()).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText('Page 1')).toBeVisible({ timeout: 30_000 })
+  await pdfContentPromise
+  await waitForPdfReady(page)
   await page.waitForTimeout(2000)
   await screenshot(page, '04-main-layout.png')
 })
@@ -321,7 +353,7 @@ test('Screenshot 05 - 1 - Chat Question', async ({ page }) => {
   await scrollChatQuestionIntoView(page, RAG_QUESTION)
   await screenshot(page, '05-1-chat-with-sources.png')
 
-  await page.locator('.rounded-lg.border.border-fog.bg-cloud').first().click()
+  await page.getByTestId('chat-source-card').first().click()
   await page.locator('span:has-text("Page")').last().waitFor({ state: 'visible', timeout: 10_000 })
   await scrollChatQuestionIntoView(page, RAG_QUESTION)
   await page.waitForTimeout(600)

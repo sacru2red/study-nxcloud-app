@@ -1,5 +1,5 @@
 import api from 'backend-sdk'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import type { PDFPageProxy } from 'pdfjs-dist'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
@@ -67,6 +67,16 @@ export function PdfViewer({
   const [totalPages, setTotalPages] = useState<number | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [renderedPage, setRenderedPage] = useState<PDFPageProxy | null>(null)
+  const viewerRef = useRef<HTMLDivElement>(null)
+
+  const clearPageReadyMarker = useCallback(() => {
+    viewerRef.current?.removeAttribute('data-pdf-page-ready')
+  }, [])
+
+  const handlePageRenderSuccess = useCallback((page: PDFPageProxy) => {
+    viewerRef.current?.setAttribute('data-pdf-page-ready', 'true')
+    setRenderedPage(page)
+  }, [])
 
   useEffect(() => {
     if (!targetPage || targetPage < 1) {
@@ -87,12 +97,14 @@ export function PdfViewer({
       setTotalPages(null)
       setLoadError(null)
       setRenderedPage(null)
+      clearPageReadyMarker()
     }
-  }, [fileId])
+  }, [fileId, clearPageReadyMarker])
 
   useEffect(() => {
     setRenderedPage(null)
-  }, [currentPage, fileId])
+    clearPageReadyMarker()
+  }, [currentPage, fileId, clearPageReadyMarker])
 
   const highlightOverlay = useMemo(() => {
     if (!highlightBbox || !renderedPage) {
@@ -163,13 +175,17 @@ export function PdfViewer({
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div ref={viewerRef} className="flex flex-1 flex-col" data-testid="pdf-viewer">
       <div className="bg-fog flex flex-1 items-start justify-center overflow-auto p-4">
         <Document
           file={fileSource}
           onLoadSuccess={handleLoadSuccess}
           onLoadError={handleLoadError}
-          loading={<p className="text-graphite text-sm">Loading PDF...</p>}
+          loading={
+            <p className="text-graphite text-sm" data-testid="pdf-loading">
+              Loading PDF...
+            </p>
+          }
           error={<p className="text-error text-sm">Failed to load PDF</p>}
         >
           <div className="relative inline-block">
@@ -178,7 +194,7 @@ export function PdfViewer({
               width={PAGE_RENDER_WIDTH}
               renderTextLayer={false}
               renderAnnotationLayer={false}
-              onRenderSuccess={(page) => setRenderedPage(page)}
+              onRenderSuccess={handlePageRenderSuccess}
             />
             {highlightOverlay && (
               <div

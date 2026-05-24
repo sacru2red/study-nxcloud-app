@@ -20,6 +20,7 @@ export function SourceCard({ source, onSourceClick }: SourceCardProps) {
 
   return (
     <div
+      data-testid="chat-source-card"
       className={
         'border-fog bg-cloud rounded-lg border p-3 text-xs' +
         (isClickable ? 'hover:border-primary-bright cursor-pointer' : '')

@@ -171,6 +171,9 @@ export function ChatPanel({
                 <div className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
                   <div
                     ref={i === lastUserMessageIndex ? lastUserMessageRef : undefined}
+                    data-testid={
+                      msg.role === 'user' ? 'chat-user-message' : 'chat-assistant-message'
+                    }
                     className={
                       msg.role === 'user'
                         ? 'bg-primary max-w-[80%] rounded-2xl rounded-br-sm px-4 py-2 text-sm text-white'

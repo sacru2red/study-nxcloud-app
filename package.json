@@ -70,6 +70,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "@keyv/postgres": "^2.2.3",
     "@nestia/core": "^11.2.0",
     "@nestia/e2e": "^11.2.0",
     "@nestia/fetcher": "^11.2.0",
@@ -88,6 +89,7 @@
     "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
     "jotai": "^2.20.0",
+    "keyv": "^5.6.0",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.4.296",
     "pg": "^8.20.0",

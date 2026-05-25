@@ -148,6 +148,7 @@ export namespace NextcloudProvider {
     }
   }
 
+  // TODO: Phase 4 리컨실 시 사용
   export const getUserQuota = async (ncUserId: string) => {
     try {
       const response = await axios.get(`${ncUrl}/ocs/v2.php/cloud/users/${ncUserId}`, {

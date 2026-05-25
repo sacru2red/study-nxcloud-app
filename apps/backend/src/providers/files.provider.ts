@@ -5,8 +5,16 @@ import { NextcloudProvider } from './nextcloud.provider'
 import { PdfWorkerProvider } from './pdf-worker.provider'
 import { normalizeUploadFileName } from '../common/decode-upload-filename'
 import { QuotaProvider } from './quota.provider'
+import { CacheProvider } from './cache.provider'
 import { buildIndexProgressSnapshot } from '../common/index-status.util'
 import { IndexJobTracker, PROGRESS_STALL_MS } from '../common/index-job-tracker'
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 function formatRetryDuration(remainingChunks: number): string {
   const ms = remainingChunks * 1_500
@@ -57,6 +65,7 @@ export namespace FilesProvider {
     const fileName = normalizeUploadFileName(file.originalname)
     await QuotaProvider.assertUploadAllowed(ownerUserId, file.size)
 
+    // NC 업로드 — 실패 시 used_bytes 무영향
     const ncResult = await NextcloudProvider.uploadFile(
       tenantId,
       fileName,
@@ -64,19 +73,48 @@ export namespace FilesProvider {
       file.mimetype,
     )
 
-    const doc = await prisma.document.create({
-      data: {
-        tenantId,
-        ownerUserId,
-        folderId: folderId ?? null,
-        ncFileId: ncResult.ncFileId,
-        fileName,
-        ncPath: ncResult.ncPath,
-        mimeType: file.mimetype,
-        fileSize: BigInt(file.size),
-        indexStatus: 'PENDING',
-      },
+    // Counter transaction — NC 성공 후에만 실행
+    const doc = await prisma.$transaction(async (tx) => {
+      // 1. row lock + 현재 사용량 조회
+      const [row] = await tx.$queryRaw<Array<{ used_bytes: bigint; quota_bytes: bigint }>>`
+        SELECT used_bytes, quota_bytes FROM users WHERE user_id = ${ownerUserId}::uuid FOR UPDATE
+      `
+
+      const currentUsed = Number(row.used_bytes)
+      const quotaLimit = Number(row.quota_bytes)
+
+      // 2. quota 재검증 (동시성 안전망)
+      if (quotaLimit > 0 && currentUsed + file.size > quotaLimit) {
+        const remainingBytes = Math.max(0, quotaLimit - currentUsed)
+        throw new BadRequestException(
+          `저장공간 할당량을 초과하여 업로드할 수 없습니다. (사용 ${formatBytes(currentUsed)} / ${formatBytes(quotaLimit)}, 남은 용량 ${formatBytes(remainingBytes)})`,
+        )
+      }
+
+      // 3. document 생성
+      const document = await tx.document.create({
+        data: {
+          tenantId,
+          ownerUserId,
+          folderId: folderId ?? null,
+          ncFileId: ncResult.ncFileId,
+          fileName,
+          ncPath: ncResult.ncPath,
+          mimeType: file.mimetype,
+          fileSize: BigInt(file.size),
+          indexStatus: 'PENDING',
+        },
+      })
+
+      // 4. used_bytes 증가
+      await tx.$executeRaw`
+        UPDATE users SET used_bytes = used_bytes + ${BigInt(file.size)} WHERE user_id = ${ownerUserId}::uuid
+      `
+
+      return document
     })
+
+    await CacheProvider.del(`quota:${ownerUserId}`)
 
     PdfWorkerProvider.processDocument(doc.documentId).catch((err) => {
       console.error(`[PdfWorker] Failed to process document ${doc.documentId}:`, err)

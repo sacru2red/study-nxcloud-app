@@ -30,23 +30,49 @@ async function main() {
       ncUserId: 'user-a1',
       role: 'admin',
       tenantId: tenants[0].tenantId,
+      quotaBytes: BigInt(104857600),
     },
-    { email: 'user-a2@example.com', ncUserId: 'user-a2', role: 'user', tenantId: tenants[0].tenantId },
-    { email: 'user-a3@example.com', ncUserId: 'user-a3', role: 'user', tenantId: tenants[0].tenantId },
+    {
+      email: 'user-a2@example.com',
+      ncUserId: 'user-a2',
+      role: 'user',
+      tenantId: tenants[0].tenantId,
+      quotaBytes: BigInt(104857600),
+    },
+    {
+      email: 'user-a3@example.com',
+      ncUserId: 'user-a3',
+      role: 'user',
+      tenantId: tenants[0].tenantId,
+      quotaBytes: BigInt(104857600),
+    },
     {
       email: 'user-b1@example.com',
       ncUserId: 'user-b1',
       role: 'admin',
       tenantId: tenants[1].tenantId,
+      quotaBytes: BigInt(104857600),
     },
-    { email: 'user-b2@example.com', ncUserId: 'user-b2', role: 'user', tenantId: tenants[1].tenantId },
-    { email: 'user-b3@example.com', ncUserId: 'user-b3', role: 'user', tenantId: tenants[1].tenantId },
+    {
+      email: 'user-b2@example.com',
+      ncUserId: 'user-b2',
+      role: 'user',
+      tenantId: tenants[1].tenantId,
+      quotaBytes: BigInt(104857600),
+    },
+    {
+      email: 'user-b3@example.com',
+      ncUserId: 'user-b3',
+      role: 'user',
+      tenantId: tenants[1].tenantId,
+      quotaBytes: BigInt(104857600),
+    },
   ]
 
   for (const u of users) {
     await prisma.user.upsert({
       where: { email: u.email },
-      update: { role: u.role, passwordHash: hash },
+      update: { role: u.role, passwordHash: hash, quotaBytes: u.quotaBytes },
       create: { ...u, passwordHash: hash },
     })
   }

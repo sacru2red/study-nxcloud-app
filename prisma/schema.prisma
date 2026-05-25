@@ -31,6 +31,8 @@ model User {
   tenant       Tenant        @relation(fields: [tenantId], references: [tenantId])
   documents    Document[]
   chatSessions ChatSession[]
+  usedBytes    BigInt        @default(0) @map("used_bytes")
+  quotaBytes   BigInt        @default(104857600) @map("quota_bytes")
 
   @@map("users")
 }
@@ -56,6 +58,7 @@ model Document {
   chunks       DocumentChunk[]
   chatSessions ChatSession[]
 
+  @@index([ownerUserId])
   @@map("documents")
 }
 

@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common'
 import { prisma } from '../prisma'
-import { NextcloudProvider } from './nextcloud.provider'
+import { CacheProvider } from './cache.provider'
 
 export interface UserQuotaSnapshot {
   usedBytes: number
@@ -8,15 +8,7 @@ export interface UserQuotaSnapshot {
   usagePercent: number
 }
 
-async function sumOwnedFileBytes(userId: string): Promise<number> {
-  const result = await prisma.document.aggregate({
-    where: { ownerUserId: userId },
-    _sum: { fileSize: true },
-  })
-  return Number(result._sum.fileSize ?? 0n)
-}
-
-function toUsagePercent(usedBytes: number, quotaBytes: number): number {
+export function toUsagePercent(usedBytes: number, quotaBytes: number): number {
   if (quotaBytes <= 0) {
     return 0
   }
@@ -25,23 +17,19 @@ function toUsagePercent(usedBytes: number, quotaBytes: number): number {
 
 export namespace QuotaProvider {
   export const getUserQuota = async (userId: string): Promise<UserQuotaSnapshot> => {
+    const cacheKey = `quota:${userId}`
+    const cached = await CacheProvider.get<UserQuotaSnapshot>(cacheKey)
+    if (cached) return cached
+
     const user = await prisma.user.findUnique({ where: { userId } })
-    if (!user) {
-      throw new Error(`User not found: ${userId}`)
-    }
+    if (!user) throw new Error(`User not found: ${userId}`)
 
-    const [usedBytes, ncQuota] = await Promise.all([
-      sumOwnedFileBytes(userId),
-      NextcloudProvider.getUserQuota(user.ncUserId),
-    ])
+    const usedBytes = Number(user.usedBytes)
+    const quotaBytes = Number(user.quotaBytes)
+    const result = { usedBytes, quotaBytes, usagePercent: toUsagePercent(usedBytes, quotaBytes) }
 
-    const quotaBytes = ncQuota.total
-
-    return {
-      usedBytes,
-      quotaBytes,
-      usagePercent: toUsagePercent(usedBytes, quotaBytes),
-    }
+    await CacheProvider.set(cacheKey, result, 120_000) // 2 min TTL
+    return result
   }
 
   export const assertUploadAllowed = async (userId: string, fileSize: number): Promise<void> => {

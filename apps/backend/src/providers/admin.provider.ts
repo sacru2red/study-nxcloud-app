@@ -1,5 +1,5 @@
 import { prisma } from '../prisma'
-import { QuotaProvider } from './quota.provider'
+import { toUsagePercent } from './quota.provider'
 
 export namespace AdminProvider {
   export const listTenants = async () => {
@@ -14,21 +14,16 @@ export namespace AdminProvider {
     const collectedAt = new Date().toISOString()
     const users = await prisma.user.findMany({ where: { tenantId } })
 
-    const userUsages = await Promise.all(
-      users.map(async (user) => {
-        const quota = await QuotaProvider.getUserQuota(user.userId)
-        return {
-          userId: user.userId,
-          email: user.email,
-          ncUserId: user.ncUserId,
-          role: user.role,
-          usedBytes: quota.usedBytes,
-          quotaBytes: quota.quotaBytes,
-          usagePercent: quota.usagePercent,
-          lastCollectedAt: collectedAt,
-        }
-      }),
-    )
+    const userUsages = users.map((user) => ({
+      userId: user.userId,
+      email: user.email,
+      ncUserId: user.ncUserId,
+      role: user.role,
+      usedBytes: Number(user.usedBytes),
+      quotaBytes: Number(user.quotaBytes),
+      usagePercent: toUsagePercent(Number(user.usedBytes), Number(user.quotaBytes)),
+      lastCollectedAt: collectedAt,
+    }))
 
     return { tenantId, lastCollectedAt: collectedAt, users: userUsages }
   }

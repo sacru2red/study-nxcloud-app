@@ -45,6 +45,6 @@ README에서 분리한 충족 현황입니다.
 ## E2E 시나리오
 
 - [x] tenant-a/b 격리
-- [x] 업로드·인덱싱·채팅·bbox·환각 억제·quota·Admin 50MB 샘플
+- [x] 업로드·인덱싱·채팅·bbox·환각 억제·quota·Admin 50MB 샘플·폴더 RAG·retry·index-status WS
 - [x] Nextcloud 인증 실패 → 503 고정 메시지 (sanitize integration test)
 - [x] 채팅 diagnostics (`NO_RELEVANT_CHUNKS` assert) / API 실패 UI 메시지

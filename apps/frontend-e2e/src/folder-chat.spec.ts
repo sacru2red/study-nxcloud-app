@@ -73,4 +73,17 @@ test('폴더 채팅에서 같은 폴더 문서를 검색해 답변한다', async
   expect(['NO_RELEVANT_CHUNKS', 'LLM_API_FAILED', 'EMBEDDING_FAILED']).toContain(
     chatBody.diagnostics?.reason,
   )
+
+  const diagnosticsLabel =
+    chatBody.diagnostics?.reason === 'NO_RELEVANT_CHUNKS'
+      ? '관련 문서 구간을 찾지 못했습니다.'
+      : chatBody.diagnostics?.reason === 'EMBEDDING_FAILED'
+        ? '질문 임베딩에 실패했습니다.'
+        : chatBody.diagnostics?.reason === 'LLM_API_FAILED'
+          ? 'LLM API 호출에 실패했습니다.'
+          : null
+
+  if (diagnosticsLabel) {
+    await expect(page.getByText(diagnosticsLabel)).toBeVisible({ timeout: 10_000 })
+  }
 })

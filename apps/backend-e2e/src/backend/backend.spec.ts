@@ -367,6 +367,46 @@ describe('Nextcloud AI Chat - 10 E2E Tests', () => {
     expect(typeof res.data.answer).toBe('string')
     expect(Array.isArray(res.data.sources)).toBe(true)
     expect(res.data.documentCount).toBeGreaterThanOrEqual(1)
+
+    if (res.data.sources.length > 0) {
+      expect(res.data.sources[0].documentId).toBeTruthy()
+      expect(res.data.sources[0].fileName).toBeTruthy()
+    }
+  })
+
+  // ── Test 7c: 폴더 채팅 환각 억제 + diagnostics ─────────────────────────────
+  it('7c. should return folder chat diagnostics when no relevant chunks', async () => {
+    const folderId = 'e2e-folder-no-match'
+    const pdfBuffer = createTestPdf()
+    const form = new FormData()
+    form.append('file', pdfBuffer, {
+      filename: 'e2e-folder-no-match.pdf',
+      contentType: 'application/pdf',
+    })
+    form.append('folderId', folderId)
+
+    const uploadRes = await axios.post('/api/tenants/tenant-a/files', form, {
+      headers: {
+        Authorization: `Bearer ${tokenA}`,
+        ...form.getHeaders(),
+      },
+    })
+
+    const folderFileId = uploadRes.data.documentId as string
+    expect(await waitForIndexStatus(folderFileId, tokenA)).toBe('COMPLETED')
+
+    const res = await axios.post(
+      `/api/folders/${encodeURIComponent(folderId)}/chat`,
+      { question: 'What is the weather in Seoul today?' },
+      { headers: { Authorization: `Bearer ${tokenA}` } },
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.data.answer).toContain('문서에서 확인 불가')
+
+    if (res.data.sources.length === 0) {
+      expect(res.data.diagnostics?.reason).toBe('NO_RELEVANT_CHUNKS')
+    }
   })
 
   // ── Test 8: 관리자 사용량 조회 (앱 DB documents.file_size 기준) ─────────

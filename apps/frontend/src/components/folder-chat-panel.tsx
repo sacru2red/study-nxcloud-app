@@ -50,11 +50,13 @@ export function FolderChatPanel({ folderId, tenantId }: FolderChatPanelProps) {
             role: 'assistant',
             content: res.answer,
             sources: res.sources?.map((source) => ({
+              documentId: source.documentId,
               fileName: source.fileName,
               pageNo: source.pageNo,
               paragraphNo: source.paragraphNo,
               text: source.text,
               similarity: source.similarity,
+              bbox: source.bbox,
             })),
             diagnosticsReason: res.diagnostics?.reason,
           },

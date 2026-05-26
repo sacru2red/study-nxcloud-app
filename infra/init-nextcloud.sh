@@ -12,6 +12,10 @@ until curl -s -o /dev/null -w "%{http_code}" "$NC_URL/status.php" | grep -q "200
 done
 echo "Nextcloud is ready!"
 
+# Nextcloud 30+ enables password_policy by default which blocks test passwords like "password123".
+docker exec nxcloud-nextcloud php occ app:disable password_policy 2>/dev/null || true
+sleep 2
+
 AUTH="$NC_USER:$NC_PASS"
 OCS_HEADERS="-H OCS-APIRequest:true -H Content-Type:application/x-www-form-urlencoded"
 

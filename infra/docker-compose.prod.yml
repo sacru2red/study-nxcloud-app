@@ -27,7 +27,7 @@ services:
       - internal
 
   nextcloud:
-    image: nextcloud:29-apache
+    image: nextcloud:33-apache
     container_name: nxcloud-nextcloud
     restart: always
     environment:

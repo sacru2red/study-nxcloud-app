@@ -1,4 +1,4 @@
-import { Controller, UseGuards } from '@nestjs/common'
+import { Controller, HttpCode, UseGuards } from '@nestjs/common'
 import { TypedRoute, TypedParam, TypedBody } from '@nestia/core'
 import { FolderProvider } from '../providers/folder.provider'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
@@ -9,6 +9,7 @@ import { FolderDto } from './folder.dto'
 @Controller('folders')
 @UseGuards(JwtAuthGuard)
 export class FolderController {
+  @HttpCode(200)
   @TypedRoute.Post(':folderId/chat')
   async chat(
     @TypedParam('folderId') folderId: string,
